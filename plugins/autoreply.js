@@ -3,19 +3,6 @@ const path = require('path');
 const config = require('../config');
 const { cmd , commands } = require('../command');
 
-const getContextInfo = (m) => {
-    return {
-        mentionedJid: [m.sender],
-        forwardingScore: 999,
-        isForwarded: true,
-        forwardedNewsletterMessageInfo: {
-            newsletterJid: '120363424973782944@newsletter',
-            newsletterName: `✨ ${config.BOT_NAME} ✨`,
-            serverMessageId: 143,
-        },
-    };
-};
-
 // Auto Reply Feature
 cmd({ on: "body" }, async (conn, mek, m, { from, body, isOwner, sender }) => {
     try {
@@ -32,16 +19,11 @@ cmd({ on: "body" }, async (conn, mek, m, { from, body, isOwner, sender }) => {
         for (const text in data) {
             if (body.toLowerCase() === text.toLowerCase()) {
                 if (config.AUTO_REPLY === 'true' || config.AUTO_REPLY === true) {
+                    // Reply with mention to the user who sent the message
                     await conn.sendMessage(from, {
-                        text: `╔═══════════════════════════╗
-║ 🤖 AUTO REPLY 🤖
-╚═══════════════════════════╝
-
-${data[text]}
-
-⚡ ${config.BOT_NAME} ✨`,
-                        contextInfo: getContextInfo({ sender: sender })
-                    }, { quoted: mek });
+                        text: `@${sender.split('@')[0]} ${data[text]}`,
+                        mentions: [sender]
+                    });
                 }
             }
         }
@@ -64,95 +46,43 @@ async (conn, mek, m, { from, sender, args, isOwner, reply }) => {
         // Owner-only access
         if (!isOwner) {
             return await conn.sendMessage(from, {
-                text: `╔═══════════════════════════╗
-║ 🚫 UNAUTHORIZED 🚫
-╚═══════════════════════════╝
-
-┌─── ✦ REASON ✦ ───┐
-│ 📋 Owner only command
-└─────────────────────────┘
-
-⚡ ${config.BOT_NAME} ✨`,
-                contextInfo: getContextInfo({ sender: sender })
+                text: `❌ UNAUTHORIZED\n\nOnly the bot owner can use this command!`,
+                contextInfo: { mentionedJid: [sender] }
             }, { quoted: mek });
         }
 
         const action = args[0]?.toLowerCase();
-        let statusText = "";
-        let reaction = "🤖";
 
         if (action === "on" || action === "enable") {
             config.AUTO_REPLY = true;
-            statusText = `╔═══════════════════════════╗
-║ ✅ AUTO REPLY ENABLED ✅
-╚═══════════════════════════╝
-
-┌─── ✦ STATUS ✦ ───┐
-│ 📌 Auto reply is now active
-└─────────────────────────┘
-
-⚡ ${config.BOT_NAME} ✨`;
-            reaction = "✅";
+            await conn.sendMessage(from, {
+                text: `✅ AUTO REPLY ENABLED\n\nAuto reply is now active.`
+            }, { quoted: mek });
+            await conn.sendMessage(from, {
+                react: { text: "✅", key: mek.key }
+            });
         } 
         else if (action === "off" || action === "disable") {
             config.AUTO_REPLY = false;
-            statusText = `╔═══════════════════════════╗
-║ ❌ AUTO REPLY DISABLED ❌
-╚═══════════════════════════╝
-
-┌─── ✦ STATUS ✦ ───┐
-│ 📌 Auto reply is now inactive
-└─────────────────────────┘
-
-⚡ ${config.BOT_NAME} ✨`;
-            reaction = "❌";
+            await conn.sendMessage(from, {
+                text: `❌ AUTO REPLY DISABLED\n\nAuto reply is now inactive.`
+            }, { quoted: mek });
+            await conn.sendMessage(from, {
+                react: { text: "❌", key: mek.key }
+            });
         } 
         else {
             // Show current status
             const currentStatus = (config.AUTO_REPLY === 'true' || config.AUTO_REPLY === true) ? "ENABLED ✅" : "DISABLED ❌";
-            return await conn.sendMessage(from, {
-                text: `╔═══════════════════════════╗
-║ 🤖 AUTO REPLY STATUS 🤖
-╚═══════════════════════════╝
-
-┌─── ✦ CURRENT STATUS ✦ ───┐
-│ 📌 ${currentStatus}
-└─────────────────────────┘
-
-┌─── ✦ HOW TO USE ✦ ───┐
-│ 1️⃣ *.autoreply on*
-│ 2️⃣ *.autoreply off*
-└─────────────────────────┘
-
-⚡ ${config.BOT_NAME} ✨`,
-                contextInfo: getContextInfo({ sender: sender })
+            await conn.sendMessage(from, {
+                text: `🤖 AUTO REPLY STATUS\n\nCurrent Status: ${currentStatus}\n\n📌 Commands:\n.autoreply on - Enable\n.autoreply off - Disable`
             }, { quoted: mek });
         }
-
-        // Send status message
-        await conn.sendMessage(from, {
-            text: statusText,
-            contextInfo: getContextInfo({ sender: sender })
-        }, { quoted: mek });
-
-        // React to original command
-        await conn.sendMessage(from, {
-            react: { text: reaction, key: mek.key }
-        });
 
     } catch (error) {
         console.error("❌ Auto Reply Command Error:", error);
         await conn.sendMessage(from, {
-            text: `╔═══════════════════════════╗
-║ ❌ COMMAND ERROR ❌
-╚═══════════════════════════╝
-
-┌─── ✦ ERROR INFO ✦ ───┐
-│ 📋 ${error.message}
-└─────────────────────────┘
-
-⚡ ${config.BOT_NAME} ✨`,
-            contextInfo: getContextInfo({ sender: sender })
+            text: `❌ ERROR\n\n${error.message}`
         }, { quoted: mek });
     }
 });

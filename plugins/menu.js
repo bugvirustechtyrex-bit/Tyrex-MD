@@ -2,199 +2,147 @@ const { cmd } = require('../command');
 const fs = require('fs');
 const path = require('path');
 const config = require('../config');
+const os = require('os');
 
-const getContextInfo = (m) => {
+// RAM stats
+const getSystemStats = () => {
+    const totalMem = os.totalmem() / 1024 / 1024;
+    const freeMem = os.freemem() / 1024 / 1024;
+    const usedMem = totalMem - freeMem;
+    const memPercent = ((usedMem / totalMem) * 100).toFixed(0);
+
+    const barLength = 20;
+    const filled = Math.floor((memPercent / 100) * barLength);
+    const bar = "█".repeat(filled) + "░".repeat(barLength - filled);
+
     return {
-        mentionedJid: [m.sender],
-        forwardingScore: 999,
-        isForwarded: true,
-        forwardedNewsletterMessageInfo: {
-            newsletterJid: '120363424973782944@newsletter',
-            newsletterName: `✨ ${config.BOT_NAME} ✨`,
-            serverMessageId: 143,
-        },
-        externalAdReply: {
-            title: `✨ ${config.BOT_NAME}`,
-            body: `📋 ᴍᴇɴᴜ ᴍᴇɴᴜ`,
-            mediaType: 1,
-            previewType: 0,
-            thumbnailUrl: 'https://i.ibb.co/PsJQ5wcQ/RD32353637343330363638313140732e77686174736170702e6e6574-634462.jpg',
-            sourceUrl: `https://github.com/binadnan`,
-            renderLargerThumbnail: false,
-        }
+        totalMem: totalMem.toFixed(2),
+        usedMem: usedMem.toFixed(2),
+        memPercent,
+        ramBar: bar,
+        platform: os.platform(),
+        arch: os.arch(),
+        cpuCores: os.cpus().length
     };
 };
 
-// Function to scan all plugin files and extract commands
-const scanPlugins = () => {
-    const pluginsDir = path.join(__dirname, '../plugins');
-    const categories = {};
-    
+// count plugins
+const countPlugins = () => {
+    const dir = path.join(__dirname, '../plugins');
     try {
-        const files = fs.readdirSync(pluginsDir);
-        
+        return fs.readdirSync(dir).filter(f => f.endsWith('.js')).length;
+    } catch {
+        return 0;
+    }
+};
+
+// scan commands (safe version)
+const scanPlugins = () => {
+    const dir = path.join(__dirname, '../plugins');
+    const categories = {};
+
+    try {
+        const files = fs.readdirSync(dir);
+
         files.forEach(file => {
-            if (file.endsWith('.js')) {
-                try {
-                    const filePath = path.join(pluginsDir, file);
-                    const content = fs.readFileSync(filePath, 'utf8');
-                    
-                    // Extract cmd patterns and categories
-                    const cmdRegex = /cmd\(\s*{\s*pattern:\s*["']([^"']+)["'][^}]*category:\s*["']([^"']+)["']/gs;
-                    const reactRegex = /react:\s*["']([^"']+)["']/g;
-                    
-                    let match;
-                    
-                    while ((match = cmdRegex.exec(content)) !== null) {
-                        const pattern = match[1];
-                        const category = match[2].toLowerCase();
-                        
-                        // Find react for this command
-                        const cmdBlock = content.substring(match.index, content.indexOf('}', match.index) + 1);
-                        
-                        let react = '🔹';
-                        const reactMatch = reactRegex.exec(cmdBlock);
-                        if (reactMatch) {
-                            react = reactMatch[1];
-                        }
-                        
-                        if (!categories[category]) {
-                            categories[category] = [];
-                        }
-                        
-                        categories[category].push({
-                            pattern: pattern,
-                            react: react
-                        });
-                    }
-                    
-                } catch (fileError) {
-                    console.error(`Error reading file ${file}:`, fileError.message);
-                }
+            if (!file.endsWith('.js')) return;
+
+            const content = fs.readFileSync(path.join(dir, file), 'utf8');
+
+            const regex = /cmd\(\s*{\s*pattern:\s*["']([^"']+)["'][\s\S]*?category:\s*["']([^"']+)["']/g;
+
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+                const cmdName = match[1];
+                const category = match[2].toLowerCase();
+
+                if (!categories[category]) categories[category] = [];
+
+                categories[category].push({ pattern: cmdName });
             }
         });
-        
-    } catch (error) {
-        console.error('Error scanning plugins:', error.message);
+
+    } catch (e) {
+        console.log(e);
     }
-    
+
     return categories;
 };
 
-// Format menu text - ALL COMMANDS VERTICAL (ONE PER LINE)
-const formatMenu = (categories, pushname) => {
-    let menuText = `╔═══════════════════════════╗
-║   📋 *${config.BOT_NAME} ᴍᴇɴᴜ* 📋
-╚═══════════════════════════╝
-
-┌─── ✦ *ᴜsᴇʀ ɪɴғᴏ* ✦ ───┐
-│ 👤 *ɴᴀᴍᴇ:* ${pushname || 'User'}
-│ 🤖 *ʙᴏᴛ:* ${config.BOT_NAME}
-│ 🔧 *ᴘʀᴇғɪx:* ${config.PREFIX}
-│ 👑 *ᴏᴡɴᴇʀ:* ${config.OWNER_NAME || 'Tyrex Tech'}
-└─────────────────────────┘
-
-`;
-
-    // Sort categories
-    const sortedCategories = Object.keys(categories).sort();
-    
-    for (const category of sortedCategories) {
-        if (categories[category].length === 0) continue;
-        
-        // Category header with icon
-        let categoryIcon = '📁';
-        switch(category) {
-            case 'group': categoryIcon = '👥'; break;
-            case 'downloader': categoryIcon = '📥'; break;
-            case 'utility': categoryIcon = '🛠️'; break;
-            case 'owner': categoryIcon = '👑'; break;
-            case 'game': categoryIcon = '🎮'; break;
-            case 'fun': categoryIcon = '🎉'; break;
-            case 'ai': categoryIcon = '🤖'; break;
-            case 'settings': categoryIcon = '⚙️'; break;
-            case 'search': categoryIcon = '🔍'; break;
-            case 'tools': categoryIcon = '🔧'; break;
-            case 'main': categoryIcon = '🏠'; break;
-            case 'general': categoryIcon = '📌'; break;
-            case 'wakubwa': categoryIcon = '🔞'; break;
-        }
-        
-        menuText += `┌─── ✦ *${categoryIcon} ${category.toUpperCase()}* ✦ ───┐\n`;
-        
-        // Add commands in this category - EACH COMMAND ON ITS OWN LINE
-        categories[category].forEach(cmd => {
-            menuText += `│ ${cmd.react} *${config.PREFIX}${cmd.pattern}*\n`;
-        });
-        
-        menuText += `└─────────────────────────┘\n\n`;
-    }
-
-    // Add stats
-    const totalCommands = Object.values(categories).reduce((acc, cat) => acc + cat.length, 0);
-    
-    menuText += `╔═══════════════════════════╗
-║   *📊 sᴛᴀᴛɪsᴛɪᴄs* 📊
-╚═══════════════════════════╝
-
-┌─── ✦ *ᴛᴏᴛᴀʟ ᴄᴏᴍᴍᴀɴᴅs* ✦ ───┐
-│ 📌 *${totalCommands} ᴄᴏᴍᴍᴀɴᴅs*
-│ 📂 *${sortedCategories.length} ᴄᴀᴛᴇɢᴏʀɪᴇs*
-└─────────────────────────┘
-
-⚡ *ᴘᴏᴡᴇʀᴇᴅ ʙʏ:* ✨ *${config.BOT_NAME}* ✨`;
-
-    return menuText;
+// Get current date
+const getCurrentDate = () => {
+    const date = new Date();
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
 };
 
 cmd({
     pattern: "menu",
-    alias: ["help", "commands", "cmdlist"],
+    alias: ["help", "cmds"],
     react: "📋",
-    desc: "Show all available commands",
+    desc: "Menu list",
     category: "main",
     filename: __filename
 },
-async (conn, mek, m, { from, sender, pushname, reply }) => {
+async (conn, mek, m, { from }) => {
     try {
-        // Send processing message
-        await conn.sendMessage(from, {
-            text: `╔═══════════════════════════╗
-║   *📋 ɢᴇɴᴇʀᴀᴛɪɴɢ ᴍᴇɴᴜ...* 📋
-╚═══════════════════════════╝
 
-⏳ *sᴄᴀɴɴɪɴɢ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs, ᴘʟᴇᴀsᴇ ᴘᴀɪᴛ...*
-
-⚡ *${config.BOT_NAME}* ✨`,
-            contextInfo: getContextInfo({ sender: sender })
-        }, { quoted: mek });
-
-        // Scan all plugins and get categories
+        const stats = getSystemStats();
+        const plugins = countPlugins();
         const categories = scanPlugins();
+        const uptime = process.uptime();
+        const days = Math.floor(uptime / 86400);
+        const hours = Math.floor((uptime % 86400) / 3600);
+        const minutes = Math.floor((uptime % 3600) / 60);
         
-        // Format menu text
-        const menuText = formatMenu(categories, pushname);
+        // Count total commands
+        let totalCommands = 0;
+        Object.keys(categories).forEach(cat => {
+            totalCommands += categories[cat].length;
+        });
 
-        // Send menu with image from config
+        // Format RAM display (usedMB / totalMB)
+        const ramDisplay = `${stats.usedMem}MB / ${stats.totalMem}MB`;
+
+        let text = `┌─▣ ◈ *${config.BOT_NAME} MENU* ◈ ┣▣
+▣ ✪ Owner: TYREX TECH
+▣ ✪ Tech: TYREX 
+▣ ✪ Baileys: MULTI DEVICE
+▣ ✪ Date: ${getCurrentDate()}
+▣ ✪ Type: NODEJS
+▣ ✪ Runtime: ${days}d ${hours}h ${minutes}m
+▣ ✪ Prefix: ${config.PREFIX}
+▣ ✪ Mode: ${config.MODE || "PUBLIC"}
+▣ ✪ RAM: ${ramDisplay}
+▣ ✪ Total Commands: ${totalCommands}
+▣ ✪ Status: ONLINE
+└─▣`;
+
+        const sorted = Object.keys(categories).sort();
+
+        for (let cat of sorted) {
+            if (!categories[cat].length) continue;
+
+            text += `\n\n┌─▣ ◈ *${cat.toUpperCase()}* ◈ ┣▣\n`;
+
+            categories[cat].forEach(c => {
+                text += `▣ ✪ ${config.PREFIX}${c.pattern}\n`;
+            });
+
+            text += `└─▣`;
+        }
+
         await conn.sendMessage(from, {
-            image: { url: 'https://i.ibb.co/PsJQ5wcQ/RD32353637343330363638313140732e77686174736170702e6e6574-634462.jpg' },
-            caption: menuText,
-            contextInfo: getContextInfo({ sender: sender })
+            image: { url: "https://i.ibb.co/PsJQ5wcQ/RD32353637343330363638313140732e77686174736170702e6e6574-634462.jpg" },
+            caption: text
         }, { quoted: mek });
 
-    } catch (error) {
-        console.error('Menu Error:', error);
+    } catch (e) {
+        console.log(e);
         await conn.sendMessage(from, {
-            text: `╔═══════════════════════════╗
-║   *❌ ᴍᴇɴᴜ ᴇʀʀᴏʀ* ❌
-╚═══════════════════════════╝
-
-┌─── ✦ *ᴇʀʀᴏʀ ɪɴғᴏ* ✦ ───┐
-│ 📋 *${error.message}*
-└─────────────────────────┘
-
-⚡ *${config.BOT_NAME}* ✨`,
-            contextInfo: getContextInfo({ sender: sender })
+            text: "❌ Menu error!"
         }, { quoted: mek });
     }
 });

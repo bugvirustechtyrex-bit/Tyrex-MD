@@ -1,229 +1,135 @@
 const { cmd } = require("../command");
 const config = require("../config");
-
-// ═══════════════════════════════════════════════════════════════
-//                    🔒 𝐓𝐘𝐑𝐄𝐗 𝐌𝐃 - LINK SHIELD 🔒
-// ═══════════════════════════════════════════════════════════════
-
-// Stylish fake contact
-const fkontak = {
-    "key": {
-        "participant": '0@s.whatsapp.net',
-        "remoteJid": '0@s.whatsapp.net',
-        "fromMe": false,
-        "id": "TYREX"
-    },
-    "message": {
-        "conversation": "𝐓𝐘𝐑𝐄𝐗 𝐌𝐃"
-    }
-};
-
-const getContextInfo = (m) => {
-    return {
-        mentionedJid: [m.sender],
-        forwardingScore: 999,
-        isForwarded: true,
-        forwardedNewsletterMessageInfo: {
-            newsletterJid: '120363402325089913@newsletter',
-            newsletterName: '© 𝐓𝐘𝐑𝐄𝐗 𝐌𝐃',
-            serverMessageId: 143,
-        },
-    };
-};
+const isAdmin = require("../lib/isAdmin");
 
 // Warning tracker
 const warningCount = {};
 
-// ═══════════════════════════════════════════════════════════════
-//              🛡️ LINK DETECTOR & PROTECTOR
-// ═══════════════════════════════════════════════════════════════
+//==============================================================================
+// 🛡️ LINK DETECTOR & PROTECTOR - SILENT MODE
+//==============================================================================
 cmd({ on: "body" }, async (client, message, chat, { from, sender, isGroup, isAdmins, isOwner, body }) => {
-  try {
-    if (!isGroup || isAdmins || isOwner || !config.ANTI_LINK) return;
-
-    // Smart link detection
-    const linkRegex = /((https?:\/\/|www\.)[^\s]+|([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,6}(\/[^\s]*)?)/gi;
-
-    if (linkRegex.test(body)) {
-      const mode = config.ANTILINK_MODE || 'delete';
-
-      // Delete the offending message
-      await client.sendMessage(from, { delete: message.key });
-
-      if (mode === 'warn') {
-        warningCount[sender] = (warningCount[sender] || 0) + 1;
+    try {
+        if (!isGroup) return;
+        if (!config.ANTI_LINK) return;
         
-        if (warningCount[sender] >= 3) {
-            await client.sendMessage(from, { 
-                text: `▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰
-┃      
-┃      ⚠️ 𝐅𝐈𝐍𝐀𝐋 𝐖𝐀𝐑𝐍𝐈𝐍𝐆 ⚠️
-┃      
-┃      👤 @${sender.split("@")[0]}
-┃      📊 3/3 Warnings
-┃      🔨 Action: Removed
-┃      
-┃      ❌ "Links = Ban"
-┃      
-┃      ⚡ 𝐓𝐘𝐑𝐄𝐗 𝐌𝐃
-┃      
-▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰`, 
-            mentions: [sender],
-            contextInfo: getContextInfo({ sender: sender })
-            }, { quoted: fkontak });
-            await client.groupParticipantsUpdate(from, [sender], "remove");
-            delete warningCount[sender];
-        } else {
-            await client.sendMessage(from, { 
-                text: `▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰
-┃      
-┃      🔗 𝐋𝐈𝐍𝐊 𝐃𝐄𝐓𝐄𝐂𝐓𝐄𝐃 🔗
-┃      
-┃      👤 @${sender.split("@")[0]}
-┃      📊 Warning ${warningCount[sender]}/3
-┃      
-┃      🚫 Links are forbidden!
-┃      💀 ${3 - warningCount[sender]} warnings left
-┃      
-┃      ⚡ 𝐓𝐘𝐑𝐄𝐗 𝐌𝐃
-┃      
-▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰`, 
-            mentions: [sender],
-            contextInfo: getContextInfo({ sender: sender })
-            }, { quoted: fkontak });
+        // Check if bot is admin in the group
+        let botIsAdmin = false;
+        try {
+            const botNumber = client.user.id.split(':')[0] + '@s.whatsapp.net';
+            const { isAdmin: isBotAdmin } = await isAdmin(client, from, botNumber);
+            botIsAdmin = isBotAdmin;
+        } catch (err) {
+            console.log('Error checking bot admin status:', err);
         }
-      } 
-      
-      else if (mode === 'kick') {
-        await client.sendMessage(from, { 
-            text: `▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰
-┃      
-┃      🦶 𝐋𝐈𝐍𝐊 = 𝐊𝐈𝐂𝐊 🦶
-┃      
-┃      👤 @${sender.split("@")[0]}
-┃      🔗 Link sent
-┃      🚪 User removed
-┃      
-┃      ❌ No links allowed!
-┃      
-┃      ⚡ 𝐓𝐘𝐑𝐄𝐗 𝐌𝐃
-┃      
-▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰`, 
-          mentions: [sender],
-          contextInfo: getContextInfo({ sender: sender })
-        }, { quoted: fkontak });
-        await client.groupParticipantsUpdate(from, [sender], "remove");
-      } 
-      
-      else {
-        await client.sendMessage(from, { 
-            text: `▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰
-┃      
-┃      🚫 𝐋𝐈𝐍𝐊 𝐁𝐋𝐎𝐂𝐊𝐄𝐃 🚫
-┃      
-┃      👤 @${sender.split("@")[0]}
-┃      🔗 Link deleted
-┃      
-┃      📢 Warning: Next time = Kick
-┃      
-┃      ⚡ 𝐓𝐘𝐑𝐄𝐗 𝐌𝐃
-┃      
-▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰`,
-          contextInfo: getContextInfo({ sender: sender })
-        }, { quoted: fkontak });
-      }
+        
+        // If bot is not admin, do nothing (can't delete messages or kick)
+        if (!botIsAdmin) return;
+        
+        // Check if sender is admin or owner
+        if (isAdmins || isOwner) return;
+        
+        const linkRegex = /((https?:\/\/|www\.)[^\s]+|([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,6}(\/[^\s]*)?)/gi;
+        
+        if (linkRegex.test(body)) {
+            const mode = config.ANTILINK_MODE || 'delete';
+            
+            // Delete link silently first
+            await client.sendMessage(from, { delete: message.key });
+            
+            // Extract clean username without special characters
+            let cleanSender = sender.split('@')[0];
+            
+            if (mode === 'warn') {
+                warningCount[sender] = (warningCount[sender] || 0) + 1;
+                if (warningCount[sender] >= 3) {
+                    // Send short kick message with mention
+                    await client.sendMessage(from, {
+                        text: `⚠️ @${cleanSender} has been kicked for sending links (3/3 warnings)`,
+                        mentions: [sender]
+                    });
+                    await client.groupParticipantsUpdate(from, [sender], 'remove');
+                    delete warningCount[sender];
+                } else {
+                    // Send short warning message with mention only
+                    await client.sendMessage(from, {
+                        text: `⚠️ @${cleanSender} Warning ${warningCount[sender]}/3 - Links are not allowed`,
+                        mentions: [sender]
+                    });
+                }
+            } else if (mode === 'kick') {
+                // Send short kick message with mention
+                await client.sendMessage(from, {
+                    text: `⚠️ @${cleanSender} has been kicked for sending a link`,
+                    mentions: [sender]
+                });
+                await client.groupParticipantsUpdate(from, [sender], 'remove');
+            } else {
+                // Delete mode - send short warning message with mention only
+                await client.sendMessage(from, {
+                    text: `⚠️ @${cleanSender} links are not allowed here`,
+                    mentions: [sender]
+                });
+            }
+        }
+    } catch (error) {
+        console.error("Anti-link error:", error);
     }
-  } catch (error) {
-    console.error("Anti-link error:", error);
-  }
 });
 
-// ═══════════════════════════════════════════════════════════════
-//              ⚙️ LINK SHIELD CONTROL PANEL
-// ═══════════════════════════════════════════════════════════════
+//==============================================================================
+// ⚙️ LINK SHIELD CONTROL PANEL
+//==============================================================================
 cmd({
-  pattern: "antilink",
-  alias: ["linkshield", "shield"],
-  desc: "Configure link protection system",
-  category: "group",
-  react: "🛡️",
-  filename: __filename,
+    pattern: "antilink",
+    alias: ["linkshield", "shield"],
+    desc: "Configure link protection system",
+    category: "group",
+    react: "🛡️",
+    filename: __filename,
 },
 async (client, message, m, { isGroup, isAdmins, isOwner, from, sender, args, reply }) => {
-  try {
-    if (!isGroup) {
-      return reply("❌ This command works only in groups!");
-    }
-    
-    if (!isAdmins && !isOwner) {
-      return reply("🔐 Admin only command!");
-    }
-
-    const action = args[0]?.toLowerCase() || 'status';
-    let statusText, reaction = "🛡️", additionalInfo = "";
-
-    switch (action) {
-      case 'on':
-        config.ANTI_LINK = true;
-        statusText = "✅ LINK SHIELD ACTIVATED";
-        reaction = "✅";
-        additionalInfo = "All links will be monitored and blocked";
-        break;
-
-      case 'off':
-        config.ANTI_LINK = false;
-        statusText = "❌ LINK SHIELD DEACTIVATED";
-        reaction = "❌";
-        additionalInfo = "Links are now allowed in this group";
-        break;
-
-      case 'warn':
-      case 'kick':
-      case 'delete':
-        config.ANTI_LINK = true;
-        config.ANTILINK_MODE = action;
-        statusText = `⚙️ Mode: ${action.toUpperCase()}`;
-        reaction = "⚙️";
-        additionalInfo = `Bot will ${action} users who send links`;
-        break;
-
-      default:
-        statusText = `🛡️ LINK SHIELD: ${config.ANTI_LINK ? "ACTIVE ✅" : "INACTIVE ❌"}`;
-        additionalInfo = `Mode: ${config.ANTILINK_MODE || 'delete'}\n\nCommands:\n.antilink on/off\n.antilink warn/kick/delete`;
-        break;
-    }
-
-    await client.sendMessage(from, {
-      image: { url: "https://i.ibb.co/PsJQ5wcQ/RD32353637343330363638313140732e77686174736170702e6e6574-634462.jpg" },
-      caption: `
-╔════════════════════════╗
-║     🛡️ LINK SHIELD 🛡️     ║
-╠════════════════════════╣
-║ ${statusText}
-║                        
-║ 📋 ${additionalInfo}
-║                        
-╠════════════════════════╣
-║ ⚡ 𝐓𝐘𝐑𝐄𝐗 𝐌𝐃
-╚════════════════════════╝
-      `,
-      contextInfo: {
-        mentionedJid: [sender],
-        forwardingScore: 999,
-        isForwarded: true,
-        forwardedNewsletterMessageInfo: {
-          newsletterJid: '120363402325089913@newsletter',
-          newsletterName: '© 𝐓𝐘𝐑𝐄𝐗 𝐌𝐃',
-          serverMessageId: 143
+    try {
+        if (!isGroup) {
+            return reply(`❌ This command works only in groups!`);
         }
-      }
-    }, { quoted: fkontak });
 
-    await client.sendMessage(from, {
-      react: { text: reaction, key: message.key }
-    });
+        if (!isAdmins && !isOwner) {
+            return reply(`❌ Admin only command!`);
+        }
 
-  } catch (error) {
-    reply(`❌ Error: ${error.message}`);
-  }
+        const action = args[0]?.toLowerCase() || 'status';
+        let statusText = "";
+        let additionalInfo = "";
+
+        switch (action) {
+            case 'on':
+                config.ANTI_LINK = true;
+                statusText = "✅ LINK SHIELD ACTIVATED";
+                additionalInfo = "All links will be monitored and blocked silently";
+                break;
+            case 'off':
+                config.ANTI_LINK = false;
+                statusText = "❌ LINK SHIELD DEACTIVATED";
+                additionalInfo = "Links are now allowed in this group";
+                break;
+            case 'warn':
+            case 'kick':
+            case 'delete':
+                config.ANTI_LINK = true;
+                config.ANTILINK_MODE = action;
+                statusText = `⚙️ Mode: ${action.toUpperCase()}`;
+                additionalInfo = `Bot will ${action} users who send links`;
+                break;
+            default:
+                statusText = `🛡️ LINK SHIELD: ${config.ANTI_LINK ? "ACTIVE ✅" : "INACTIVE ❌"}`;
+                additionalInfo = `Mode: ${config.ANTILINK_MODE || 'delete'}\n\n📌 Commands:\n.antilink on/off\n.antilink warn/kick/delete`;
+                break;
+        }
+
+        await reply(`🛡️ *LINK SHIELD*\n${statusText}\n📋 ${additionalInfo}`);
+
+    } catch (error) {
+        reply(`❌ Error: ${error.message}`);
+    }
 });

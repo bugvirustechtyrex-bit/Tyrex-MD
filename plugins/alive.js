@@ -28,34 +28,28 @@ async (conn, mek, m, { from, sender, reply, pushname }) => {
         const platform = os.platform();
         const nodeVersion = process.version;
         
-        // Stylish alive message with config values
-        const aliveText = 
-`╔══════════════════════════════════════╗
-║     🟢 ${config.BOT_NAME} IS ALIVE 🟢     
-╠══════════════════════════════════════╣
-║  🤖 BOT: ${config.BOT_NAME}              
-║  📊 STATUS: ONLINE              
-║  ⏰ UPTIME: ${uptimeString}${' '.repeat(18 - uptimeString.length)}║
-╠══════════════════════════════════════╣
-║  💻 PLATFORM: ${platform}${' '.repeat(17 - platform.length)}║
-║  🧠 MEMORY: ${Math.round(usedMemory)}MB / ${Math.round(totalMemory)}MB (${memoryPercent}%)  ║
-║  📦 NODE: ${nodeVersion}${' '.repeat(19 - nodeVersion.length)}║
-╠══════════════════════════════════════╣
-║  👤 USER: @${sender.split('@')[0]}${' '.repeat(16 - sender.split('@')[0].length)}║
-╚══════════════════════════════════════╝
-
-⚡ POWERED BY: ✨ ${config.BOT_NAME} ✨`;
+        const aliveText = `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ 🤖 BOT: ${config.BOT_NAME}
+┣▣ 📊 STATUS: ONLINE
+┣▣ ⏰ UPTIME: ${uptimeString}
+┣▣ 💻 PLATFORM: ${platform}
+┣▣ 🧠 MEMORY: ${Math.round(usedMemory)}MB / ${Math.round(totalMemory)}MB (${memoryPercent}%)
+┣▣ 📦 NODE: ${nodeVersion}
+┣▣ 👤 USER: @${sender.split('@')[0]}
+┣▣
+┣▣ ⚡ POWERED BY ${config.BOT_NAME}
+┗▣`;
         
-        // Send with image and external ad reply
+        // Send with image from your link
         await conn.sendMessage(from, {
-            image: { url: 'https://files.catbox.moe/8a9abd.png' },
+            image: { url: 'https://i.ibb.co/PsJQ5wcQ/RD32353637343330363638313140732e77686174736170702e6e6574-634462.jpg' },
             caption: aliveText,
             mentions: [sender],
             contextInfo: {
                 externalAdReply: {
                     title: `${config.BOT_NAME}`,
                     body: '✅ Bot is running smoothly',
-                    thumbnailUrl: 'https://files.catbox.moe/8a9abd.png',
+                    thumbnailUrl: 'https://i.ibb.co/PsJQ5wcQ/RD32353637343330363638313140732e77686174736170702e6e6574-634462.jpg',
                     sourceUrl: 'https://github.com/binadnan',
                     mediaType: 1,
                     renderLargerThumbnail: true

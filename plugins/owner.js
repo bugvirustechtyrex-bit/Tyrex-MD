@@ -1,43 +1,34 @@
-const { cmd } = require("../command");
-const config = require("../config");
+const { cmd } = require('../command');
+const config = require('../config');
 
 cmd({
     pattern: "owner",
-    alias: ["mods", "developer", "creator"],
-    desc: "Contact the bot owner",
+    alias: ["creator", "dev"],
+    desc: "Show owner contact",
     category: "main",
     react: "👑",
     filename: __filename
 },
-async (conn, mek, m, { from, quoted, reply }) => {
+async (conn, mek, m, { from }) => {
     try {
-        // Get owner details from config
-        const ownerNumber = config.OWNER_NUMBER || "255628378557";
-        const ownerName = config.OWNER_NAME || "𝐓𝐲𝐫𝐞𝐱 𝐓𝐞𝐜𝐡";
-        const botName = config.BOT_NAME || "𝐓𝐘𝐑𝐄𝐗 𝐌𝐃";
-        
-        // Clean owner number (remove spaces and +)
-        const cleanNumber = ownerNumber.replace(/[^0-9]/g, '');
-        
-        // Create vCard
+
         const vcard = `BEGIN:VCARD
 VERSION:3.0
-FN:${ownerName}
-ORG:${botName}
-TEL;type=CELL;type=VOICE;waid=${cleanNumber}:+${cleanNumber}
-NOTE:Bot Developer & Owner
-END:VCARD`;
+FN:Owner ${config.BOT_NAME}
+ORG:SILA TECH
+TEL;type=CELL;type=VOICE;waid=255628378557:+255 628 378 557END:VCARD`;
 
-        // Send contact
         await conn.sendMessage(from, {
             contacts: {
-                displayName: ownerName,
-                contacts: [{ vcard: vcard }]
+                displayName: "OWNER",
+                contacts: [{ vcard }]
             }
         }, { quoted: mek });
-        
-    } catch (error) {
-        console.error("Owner command error:", error);
-        reply(`❌ Error: ${error.message}`);
+
+    } catch (e) {
+        console.log(e);
+        await conn.sendMessage(from, {
+            text: "❌ Error sending owner contact!"
+        }, { quoted: mek });
     }
 });
