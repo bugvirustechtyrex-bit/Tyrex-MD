@@ -6,7 +6,7 @@ function convertToBool(text, fault = 'true') {
 }
 
 module.exports = {
-SESSION_ID: process.env.SESSION_ID || "sila~SYV22QYb#-7bleS02kJ7rTsJpAVPMqEnkq8QDkAYznHtEvi_IJI8",
+SESSION_ID: process.env.SESSION_ID || "sila~CElVBDbB#90dlrxuCGnN24Yr0vINfAiP15BgdGNwWP8DMK7N1b0c",
 // 𝖆𝖉𝖉 𝖞𝖔𝖚𝖗 𝖘𝖊𝖘𝖘𝖎𝖔𝖓 𝖎𝖉
 
 AUTO_STATUS_SEEN: process.env.AUTO_STATUS_SEEN || "true",
@@ -74,7 +74,7 @@ CUSTOM_REACT_EMOJIS: process.env.CUSTOM_REACT_EMOJIS || "💝,💖,💗,❤️�
 DELETE_LINKS: process.env.DELETE_LINKS || "false",
 // 𝗮𝘂𝘁𝗼𝗺𝗮𝘁𝗶𝗰𝗮𝗹𝗹𝘆 𝗱𝗲𝗹𝗲𝘁𝗲 𝗹𝗶𝗻𝗸𝘀 𝘄𝗶𝘁𝗵𝗼𝘂𝘁 𝗿𝗲𝗺𝗼𝘃𝗶𝗻𝗴 𝗺𝗲𝗺𝗯𝗲𝗿
 
-OWNER_NUMBER: process.env.OWNER_NUMBER || "255770100487",
+OWNER_NUMBER: process.env.OWNER_NUMBER || "255628378557",
 // 𝗯𝗼𝘁 𝗼𝘄𝗻𝗲𝗿 𝗻𝘂𝗺𝗯𝗲𝗿(𝘀) - 𝘁𝗲𝗻𝗴𝗮𝗻𝗶𝘀𝗵𝗮 𝗸𝘄𝗮 𝗸𝗼𝗺𝗮 (,) 𝗸𝗶𝘄𝗮 𝘇𝗮𝗶𝗱𝗶 𝗬𝗔 𝗠𝗠𝗢𝗝𝗔
 
 OWNER_NAME: process.env.OWNER_NAME || "𝐓𝐲𝐫𝐞𝐱 𝐓𝐞𝐜𝐡",
@@ -122,7 +122,7 @@ AUTO_TYPING: process.env.AUTO_TYPING || "true",
 READ_CMD: process.env.READ_CMD || "false",
 // 𝘁𝗿𝘂𝗲 𝗶𝗳 𝘄𝗮𝗻𝘁 𝘁𝗼 𝗺𝗮𝗿𝗸 𝗰𝗼𝗺𝗺𝗮𝗻𝗱𝘀 𝗮𝘀 𝗿𝗲𝗮𝗱
 
-DEV: process.env.DEV || "255770100487",
+DEV: process.env.DEV || "255628378557",
 // 𝗱𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗿 𝘄𝗵𝗮𝘁𝘀𝗮𝗽𝗽 𝗻𝘂𝗺𝗯𝗲𝗿
 
 ANTI_VV: process.env.ANTI_VV || "true",
