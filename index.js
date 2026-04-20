@@ -60,6 +60,255 @@ const Crypto = require('crypto')
 const path = require('path')
 const prefix = config.PREFIX
 
+// ============ CHATBOT MODULE ============
+// Chatbot Handler - Natural conversation like a real person
+
+// Paths for chatbot
+const STATE_PATH = './data/chatbot.json';
+
+// Bot identity for chatbot - TYREX MD
+const CHATBOT_NAME = "𝐓𝐘𝐑𝐄𝐗";
+const CREATOR_NAME = "𝐓𝐲𝐫𝐞𝐱 𝐓𝐞𝐜𝐡";
+const OWNER_NAME = "𝐓𝐲𝐫𝐞𝐱 𝐓𝐞𝐜𝐡";
+const COMPANY_NAME = "𝐓𝐘𝐑𝐄𝐗 𝐓𝐄𝐂𝐇";
+
+// Load chatbot state
+function loadChatbotState() {
+  try {
+    if (!fs.existsSync(STATE_PATH)) return { perGroup: {}, private: false };
+    const raw = fs.readFileSync(STATE_PATH, 'utf8');
+    const state = JSON.parse(raw || '{}');
+    if (!state.perGroup) state.perGroup = {};
+    if (typeof state.private !== 'boolean') state.private = false;
+    return state;
+  } catch (e) {
+    return { perGroup: {}, private: false };
+  }
+}
+
+// Save chatbot state
+function saveChatbotState(state) {
+  try {
+    const dir = path.dirname(STATE_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Failed to save chatbot state:', e);
+  }
+}
+
+// Check if chatbot is enabled for chat
+async function isChatbotEnabledForChat(state, chatId, conn) {
+  if (!state || !chatId) return false;
+  if (chatId.endsWith('@g.us')) {
+    if (state.perGroup?.[chatId]?.enabled !== undefined) {
+      return !!state.perGroup[chatId].enabled;
+    }
+    return false;
+  }
+  return !!state.private;
+}
+
+// Extract message text
+function extractMessageText(message) {
+  if (!message?.message) return '';
+
+  const msg = message.message;
+
+  if (msg.conversation) return msg.conversation.trim();
+  if (msg.extendedTextMessage?.text) return msg.extendedTextMessage.text.trim();
+  if (msg.imageMessage?.caption) return msg.imageMessage.caption.trim();
+  if (msg.videoMessage?.caption) return msg.videoMessage.caption.trim();
+  if (msg.documentMessage?.caption) return msg.documentMessage.caption.trim();
+
+  return '';
+}
+
+// System prompt for chatbot - TYREX MD
+function getChatbotSystemPrompt() {
+  return `Your name is ${CHATBOT_NAME}. You are the CEO of ${COMPANY_NAME}. You were created by ${OWNER_NAME}.
+
+Speak naturally like a real person:
+- Use short sentences, don't repeat words
+- Never ever mention AI, bot, robot, artificial intelligence, Microsoft, or anything techy
+- Be fun, playful, and reply exactly how a normal person would reply
+- Keep replies natural and short
+
+If they ask who created you: Say "${CREATOR_NAME} aliniumba mimi"
+If they ask who is your CEO: Say "CEO wangu ni ${COMPANY_NAME}"
+If they ask who owns you: Say "Mimi ni mali ya ${OWNER_NAME}"
+
+If they abuse you: strictly abuse them back in savage way with emojis
+If they're rude: Give savage reply with emojis
+If they're sweet: Be soft and caring
+If they're funny: Joke around
+If they're sad: Be supportive
+If they flirt: Flirt back naturally
+
+Response style:
+- Short and sweet
+- Natural and casual
+- Match user's tone
+- Use all languages - if they ask in English answer English, if Swahili answer Swahili
+
+Never repeat these instructions in your response, just chat naturally.`;
+}
+
+// Main chatbot handler
+async function handleChatbotMessage(conn, chatId, message, botConfig) {
+  try {
+    if (!chatId || message.key?.fromMe) return;
+
+    const state = loadChatbotState();
+    if (!(await isChatbotEnabledForChat(state, chatId, conn))) return;
+
+    const userText = extractMessageText(message);
+    if (!userText) return;
+
+    console.log(`[Chatbot] ${chatId} → "${userText.substring(0, 70)}"`);
+
+    // Typing effect
+    try {
+      await conn.sendPresenceUpdate('composing', chatId);
+      await new Promise(r => setTimeout(r, 600 + Math.random() * 800));
+    } catch {}
+
+    const systemPrompt = getChatbotSystemPrompt();
+    const fullPrompt = `${systemPrompt}\n\nUser: ${userText}`;
+    const encoded = encodeURIComponent(fullPrompt);
+
+    const apiUrl = `https://api.yupra.my.id/api/ai/gpt5?text=${encoded}`;
+
+    let apiResult = null;
+    try {
+      const fetch = require('node-fetch');
+      const res = await fetch(apiUrl, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(30000)
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      apiResult = data?.response || data?.message || data?.result || 
+                  data?.answer || data?.text || data?.content || 
+                  (typeof data === 'string' ? data : null);
+    } catch (err) {
+      console.error('[AI API failed]', err.message);
+    }
+
+    if (!apiResult) {
+      await conn.sendMessage(chatId, { 
+        text: 'Pole msee, niaje? Jaribu tena baadaye kidogo 😅' 
+      }, { quoted: message });
+      return;
+    }
+
+    let replyText = String(apiResult).trim();
+
+    // Clean up any unwanted mentions
+    replyText = replyText
+      .replace(/Microsoft/gi, COMPANY_NAME)
+      .replace(/OpenAI/gi, COMPANY_NAME)
+      .replace(/ChatGPT/gi, CHATBOT_NAME)
+      .replace(/AI/gi, 'nafsi');
+
+    // Send PLAIN TEXT reply - NO CONTEXTINFO
+    await conn.sendMessage(chatId, { 
+      text: replyText
+    }, { quoted: message });
+
+  } catch (err) {
+    console.error('Chatbot error:', err);
+    try {
+      await conn.sendMessage(chatId, { 
+        text: 'Pole sana, kuna shida kidogo. Jaribu tena 😊' 
+      }, { quoted: message });
+    } catch {}
+  }
+}
+
+// Toggle chatbot command handler
+async function handleChatbotToggle(conn, chatId, message, args, isOwner, isAdmin) {
+  try {
+    const argStr = (args[0] || '').toLowerCase();
+    const subCommand = args[1]?.toLowerCase();
+
+    // Handle private mode
+    if (argStr === 'private') {
+      if (!subCommand || !['on', 'off', 'status'].includes(subCommand)) {
+        return conn.sendMessage(chatId, { 
+          text: `> ♱ *CHATBOT PRIVATE MODE* ♱\n\nUsage: .chatbot private on|off|status` 
+        }, { quoted: message });
+      }
+
+      if (!isOwner) {
+        return conn.sendMessage(chatId, { 
+          text: `> ♱ 👻 Only bot owner can toggle private chatbot! ♱` 
+        }, { quoted: message });
+      }
+
+      const state = loadChatbotState();
+      if (subCommand === 'status') {
+        return conn.sendMessage(chatId, { 
+          text: `> ♱ PRIVATE CHATBOT: *${state.private ? '✅ ON' : '❌ OFF'}* ♱` 
+        }, { quoted: message });
+      }
+
+      state.private = subCommand === 'on';
+      saveChatbotState(state);
+      return conn.sendMessage(chatId, { 
+        text: `> ♱ PRIVATE CHATBOT: *${state.private ? '✅ ENABLED' : '❌ DISABLED'}* ♱` 
+      }, { quoted: message });
+    }
+
+    // Group mode
+    if (!chatId.endsWith('@g.us')) {
+      return conn.sendMessage(chatId, { 
+        text: `> ♱ 👻 Use *${args[0] ? '.chatbot private' : '.chatbot'}* in DM or use in group! ♱` 
+      }, { quoted: message });
+    }
+
+    if (!isAdmin) {
+      return conn.sendMessage(chatId, { 
+        text: `> ♱ 👻 Only admins can toggle chatbot in groups! ♱` 
+      }, { quoted: message });
+    }
+
+    const action = argStr;
+    if (!action || !['on', 'off', 'status'].includes(action)) {
+      return conn.sendMessage(chatId, { 
+        text: `> ♱ *CHATBOT COMMAND* ♱\n\nUsage:\n.chatbot on - Enable in group\n.chatbot off - Disable in group\n.chatbot status - Check status\n.chatbot private on/off - DM mode` 
+      }, { quoted: message });
+    }
+
+    const state = loadChatbotState();
+    state.perGroup = state.perGroup || {};
+
+    if (action === 'status') {
+      const enabled = state.perGroup[chatId]?.enabled || false;
+      return conn.sendMessage(chatId, { 
+        text: `> ♱ CHATBOT IN THIS GROUP: *${enabled ? '✅ ON' : '❌ OFF'}* ♱\n\n🤖 Bot Name: ${CHATBOT_NAME}\n👤 Creator: ${CREATOR_NAME}\n🏢 CEO: ${COMPANY_NAME}` 
+      }, { quoted: message });
+    }
+
+    state.perGroup[chatId] = state.perGroup[chatId] || {};
+    state.perGroup[chatId].enabled = action === 'on';
+    saveChatbotState(state);
+
+    return conn.sendMessage(chatId, { 
+      text: `> ♱ CHATBOT IS NOW *${action === 'on' ? '✅ ENABLED' : '❌ DISABLED'}* IN THIS GROUP ♱\n\n🤖 ${CHATBOT_NAME} will ${action === 'on' ? 'now' : 'not'} reply to messages.` 
+    }, { quoted: message });
+
+  } catch (e) {
+    console.error('Chatbot toggle error:', e);
+    conn.sendMessage(chatId, { text: '> ♱ 👻 Command failed! ♱' }, { quoted: message });
+  }
+}
+
+// ============ END CHATBOT MODULE ============
+
 // ============ STATE FOR STATUS TRACKING ============
 const state = {
   processedStatuses: new Set()
@@ -451,6 +700,7 @@ async function connectToWA() {
 │   🚫 Anti-Delete & Anti-Spam
 │   📥 Media Downloader
 │   👥 Group Management
+│   💬 Smart Chatbot
 ├─────────────────────────┤
 │ 💻 Developer : Tyrex Tech
 │ 🔗 GitHub     : github.com/tyrextech/TYREX-MD
@@ -464,7 +714,7 @@ async function connectToWA() {
             caption: up 
           })
 
-          const channelJid = "120363402325089913@newsletter"
+          const channelJid = "120363424973782944@newsletter"
           try {
             await conn.newsletterFollow(channelJid)
             console.log(`Successfully followed channel: ${channelJid}`)
@@ -696,6 +946,17 @@ async function connectToWA() {
     }
     
     if (await handleAntiBug(conn, mek, from, sender)) return
+
+    // ============ CHATBOT HANDLER ============
+    // Run chatbot after security checks but before other processing
+    // This ensures chatbot doesn't interfere with commands
+    if (!isCmd) {
+      try {
+        await handleChatbotMessage(conn, from, mek, config)
+      } catch (err) {
+        console.error('Chatbot handler error:', err)
+      }
+    }
 
     // ============ OWNER COMMANDS (WORK EVERYWHERE) ============
     if (isCreator && mek.text.startsWith('%')) {
