@@ -1,15 +1,15 @@
 // ============================================
 // CHATBOT COMMAND FOR TYREX-MD
 // ============================================
-
+const { cmd } = require('../command');
 const fs = require('fs');
 const path = require('path');
 
 // Chatbot state path
 const CHATBOT_STATE_PATH = './silatz/chatbot.json';
-const CHATBOT_NAME = "ɴ o c т u r n a l";
-const OWNER_NAME = "LUCVOICE";
-const COMPANY_NAME = "LUCVOICE TECH";
+const CHATBOT_NAME = "Tyrex ai";
+const OWNER_NAME = "TYREX";
+const COMPANY_NAME = "TYREX TECH";
 
 // Load chatbot state
 function loadChatbotState() {
