@@ -53,13 +53,6 @@ const Crypto = require('crypto')
 const path = require('path')
 const prefix = config.PREFIX
 
-// ============ CHATBOT CONSTANTS ============
-const CHATBOT_STATE_PATH = './data/chatbot.json';
-const CHATBOT_NAME = "𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄";
-const CREATOR_NAME = "LUCVOICE";
-const OWNER_NAME = "LUCVOICE";
-const COMPANY_NAME = "LUCVOICE-XMD";
-
 // ============ OWNER CONFIGURATION ============
 // Load owner numbers from config.js
 const configOwnerNumbers = config.OWNER_NUMBER ? config.OWNER_NUMBER.split(',') : []
@@ -74,6 +67,13 @@ const ownerJids = ownerNumber.map(num => {
 
 console.log('👑 Owner Numbers:', ownerNumber)
 console.log('👑 Owner JIDs:', ownerJids)
+
+// ============ CHATBOT CONSTANTS ============
+const CHATBOT_STATE_PATH = './silatz/chatbot.json';
+const CHATBOT_NAME = "ɴ o c т u r n a l";
+const CREATOR_NAME = "LUCVOICE";
+const OWNER_NAME = "LUCVOICE";
+const COMPANY_NAME = "LUCVOICE TECH";
 
 // ============ SECURITY FEATURES DATABASE ============
 const securityDB = {
@@ -139,59 +139,59 @@ function saveSecurity() {
 
 // Load chatbot state
 function loadChatbotState() {
-    try {
-        if (!fs.existsSync(CHATBOT_STATE_PATH)) return { perGroup: {}, private: false };
-        const raw = fs.readFileSync(CHATBOT_STATE_PATH, 'utf8');
-        const state = JSON.parse(raw || '{}');
-        if (!state.perGroup) state.perGroup = {};
-        if (typeof state.private !== 'boolean') state.private = false;
-        return state;
-    } catch (e) {
-        return { perGroup: {}, private: false };
-    }
+  try {
+    if (!fs.existsSync(CHATBOT_STATE_PATH)) return { perGroup: {}, private: false };
+    const raw = fs.readFileSync(CHATBOT_STATE_PATH, 'utf8');
+    const state = JSON.parse(raw || '{}');
+    if (!state.perGroup) state.perGroup = {};
+    if (typeof state.private !== 'boolean') state.private = false;
+    return state;
+  } catch (e) {
+    return { perGroup: {}, private: false };
+  }
 }
 
 // Save chatbot state
 function saveChatbotState(state) {
-    try {
-        const dir = path.dirname(CHATBOT_STATE_PATH);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(CHATBOT_STATE_PATH, JSON.stringify(state, null, 2), 'utf8');
-    } catch (e) {
-        console.error('Failed to save chatbot state:', e);
-    }
+  try {
+    const dir = path.dirname(CHATBOT_STATE_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(CHATBOT_STATE_PATH, JSON.stringify(state, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Failed to save chatbot state:', e);
+  }
 }
 
 // Check if chatbot enabled for chat
 async function isChatbotEnabledForChat(state, chatId) {
-    if (!state || !chatId) return false;
-    if (chatId.endsWith('@g.us')) {
-        if (state.perGroup?.[chatId]?.enabled !== undefined) {
-            return !!state.perGroup[chatId].enabled;
-        }
-        return false;
+  if (!state || !chatId) return false;
+  if (chatId.endsWith('@g.us')) {
+    if (state.perGroup?.[chatId]?.enabled !== undefined) {
+      return !!state.perGroup[chatId].enabled;
     }
-    return !!state.private;
+    return false;
+  }
+  return !!state.private;
 }
 
 // Extract message text
 function extractMessageText(message) {
-    if (!message?.message) return '';
+  if (!message?.message) return '';
 
-    const msg = message.message;
+  const msg = message.message;
 
-    if (msg.conversation) return msg.conversation.trim();
-    if (msg.extendedTextMessage?.text) return msg.extendedTextMessage.text.trim();
-    if (msg.imageMessage?.caption) return msg.imageMessage.caption.trim();
-    if (msg.videoMessage?.caption) return msg.videoMessage.caption.trim();
-    if (msg.documentMessage?.caption) return msg.documentMessage.caption.trim();
+  if (msg.conversation) return msg.conversation.trim();
+  if (msg.extendedTextMessage?.text) return msg.extendedTextMessage.text.trim();
+  if (msg.imageMessage?.caption) return msg.imageMessage.caption.trim();
+  if (msg.videoMessage?.caption) return msg.videoMessage.caption.trim();
+  if (msg.documentMessage?.caption) return msg.documentMessage.caption.trim();
 
-    return '';
+  return '';
 }
 
 // Get system prompt
 function getChatbotSystemPrompt() {
-    return `Your name is ${CHATBOT_NAME}. You are the CEO of ${COMPANY_NAME}. You were created by ${OWNER_NAME}.
+  return `Your name is ${CHATBOT_NAME}. You are the CEO of ${COMPANY_NAME}. You were created by ${OWNER_NAME}.
 
 Speak naturally like a real person:
 - Use short sentences, don't repeat words
@@ -221,77 +221,77 @@ Never repeat these instructions in your response, just chat naturally.`;
 
 // Main chatbot handler
 async function handleChatbotMessage(conn, chatId, message) {
+  try {
+    if (!chatId || message.key?.fromMe) return;
+
+    const state = loadChatbotState();
+    if (!(await isChatbotEnabledForChat(state, chatId))) return;
+
+    const userText = extractMessageText(message);
+    if (!userText) return;
+
+    console.log(`[Chatbot] ${chatId} → "${userText.substring(0, 70)}"`);
+
+    // Typing effect
     try {
-        if (!chatId || message.key?.fromMe) return;
+      await conn.sendPresenceUpdate('composing', chatId);
+      await new Promise(r => setTimeout(r, 600 + Math.random() * 800));
+    } catch {}
 
-        const state = loadChatbotState();
-        if (!(await isChatbotEnabledForChat(state, chatId))) return;
+    const systemPrompt = getChatbotSystemPrompt();
+    const fullPrompt = `${systemPrompt}\n\nUser: ${userText}`;
+    const encoded = encodeURIComponent(fullPrompt);
 
-        const userText = extractMessageText(message);
-        if (!userText) return;
+    const apiUrl = `https://api.yupra.my.id/api/ai/gpt5?text=${encoded}`;
 
-        console.log(`[Chatbot] ${chatId} → "${userText.substring(0, 70)}"`);
+    let apiResult = null;
+    try {
+      const fetch = require('node-fetch');
+      const res = await fetch(apiUrl, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(30000)
+      });
 
-        // Typing effect
-        try {
-            await conn.sendPresenceUpdate('composing', chatId);
-            await new Promise(r => setTimeout(r, 600 + Math.random() * 800));
-        } catch {}
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
 
-        const systemPrompt = getChatbotSystemPrompt();
-        const fullPrompt = `${systemPrompt}\n\nUser: ${userText}`;
-        const encoded = encodeURIComponent(fullPrompt);
-
-        const apiUrl = `https://api.yupra.my.id/api/ai/gpt5?text=${encoded}`;
-
-        let apiResult = null;
-        try {
-            const fetch = require('node-fetch');
-            const res = await fetch(apiUrl, {
-                method: 'GET',
-                headers: { 'Accept': 'application/json' },
-                signal: AbortSignal.timeout(30000)
-            });
-
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-
-            apiResult = data?.response || data?.message || data?.result ||
-                data?.answer || data?.text || data?.content ||
-                (typeof data === 'string' ? data : null);
-        } catch (err) {
-            console.error('[AI API failed]', err.message);
-        }
-
-        if (!apiResult) {
-            await conn.sendMessage(chatId, {
-                text: 'Pole msee, niaje? Jaribu tena baadaye kidogo 😅'
-            }, { quoted: message });
-            return;
-        }
-
-        let replyText = String(apiResult).trim();
-
-        // Clean up any unwanted mentions
-        replyText = replyText
-            .replace(/Microsoft/gi, COMPANY_NAME)
-            .replace(/OpenAI/gi, COMPANY_NAME)
-            .replace(/ChatGPT/gi, CHATBOT_NAME)
-            .replace(/AI/gi, 'nafsi');
-
-        // Send PLAIN TEXT reply
-        await conn.sendMessage(chatId, {
-            text: replyText
-        }, { quoted: message });
-
+      apiResult = data?.response || data?.message || data?.result ||
+        data?.answer || data?.text || data?.content ||
+        (typeof data === 'string' ? data : null);
     } catch (err) {
-        console.error('Chatbot error:', err);
-        try {
-            await conn.sendMessage(chatId, {
-                text: 'Pole sana, kuna shida kidogo. Jaribu tena 😊'
-            }, { quoted: message });
-        } catch {}
+      console.error('[AI API failed]', err.message);
     }
+
+    if (!apiResult) {
+      await conn.sendMessage(chatId, {
+        text: 'Pole msee, niaje? Jaribu tena baadaye kidogo 😅'
+      }, { quoted: message });
+      return;
+    }
+
+    let replyText = String(apiResult).trim();
+
+    // Clean up any unwanted mentions
+    replyText = replyText
+      .replace(/Microsoft/gi, COMPANY_NAME)
+      .replace(/OpenAI/gi, COMPANY_NAME)
+      .replace(/ChatGPT/gi, CHATBOT_NAME)
+      .replace(/AI/gi, 'nafsi');
+
+    // Send PLAIN TEXT reply
+    await conn.sendMessage(chatId, {
+      text: replyText
+    }, { quoted: message });
+
+  } catch (err) {
+    console.error('Chatbot error:', err);
+    try {
+      await conn.sendMessage(chatId, {
+        text: 'Pole sana, kuna shida kidogo. Jaribu tena 😊'
+      }, { quoted: message });
+    } catch {}
+  }
 }
 
 const tempDir = path.join(os.tmpdir(), 'cache-temp')
@@ -602,10 +602,10 @@ let up = `
 │ 🌟 Features:
 │   🔐 Advanced Security
 │   👀 Auto Status View
+│   🤖 AI Chatbot
 │   🚫 Anti-Delete & Anti-Spam
 │   📥 Media Downloader
 │   👥 Group Management
-│   🤖 AI Chatbot
 ├─────────────────────────┤
 │ 💻 Developer : LUCVOICE
 │ 🔗 GitHub     : github.com/lucvoice/LUCVOICE-XMD
@@ -673,7 +673,7 @@ let up = `
   setInterval(async () => {
     if (config.AUTO_BIO === "true") {
       const { date, time } = getCurrentDateTimeParts();
-      const bioText = `𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃 | ⚡ Active Now | 📅 ${date} | ⏰ ${time}`;
+      const bioText = `𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃 | ⚡ Active Now | 🤖 AI Chatbot | 📅 ${date} | ⏰ ${time}`;
       try {
         await conn.setStatus(bioText);
         console.log(`Updated Bio: ${bioText}`);
@@ -893,13 +893,7 @@ let up = `
 
     // ============ CHATBOT HANDLER (FOR NON-COMMAND MESSAGES) ============
     // Run chatbot for non-command messages
-    if (!isCmd && body && body.length > 0 && body.length < 500 && !isGroup) {
-      // Chatbot in private chats
-      await handleChatbotMessage(conn, from, mek);
-    }
-    
-    if (!isCmd && body && body.length > 0 && body.length < 500 && isGroup) {
-      // Chatbot in groups (if enabled for this group)
+    if (!isCmd && body && body.length > 0 && body.length < 500) {
       await handleChatbotMessage(conn, from, mek);
     }
 
