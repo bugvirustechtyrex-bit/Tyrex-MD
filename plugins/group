@@ -1,0 +1,621 @@
+const { cmd } = require('../command');
+const config = require('../config');
+
+const getContextInfo = (m) => {
+    return {
+        mentionedJid: [m.sender],
+        forwardingScore: 999,
+        isForwarded: true,
+        forwardedNewsletterMessageInfo: {
+            newsletterJid: '120363424973782944@newsletter',
+            newsletterName: `✨ ${config.BOT_NAME} ✨`,
+            serverMessageId: 143,
+        },
+    };
+};
+
+// 1. GROUP INFO COMMAND
+cmd({
+    pattern: "groupinfo",
+    alias: ["ginfo", "infogroup"],
+    react: "ℹ️",
+    desc: "Get group information",
+    category: "group",
+    filename: __filename
+},
+async (conn, mek, m, { from, isGroup, sender, groupMetadata, groupAdmins, participants, reply }) => {
+    try {
+        if (!isGroup) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ This command can only be used in groups
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        const groupName = groupMetadata.subject || "No name";
+        const groupDesc = groupMetadata.desc || "No description";
+        const groupSize = participants.length;
+        const adminCount = groupAdmins.length;
+        const groupCreation = new Date(groupMetadata.creation * 1000).toLocaleDateString();
+        const groupId = from.split('@')[0];
+
+        await conn.sendMessage(from, {
+            text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ 📊 GROUP INFO
+┣▣
+┣▣ 📋 BASIC INFO
+┣▣ 📛 NAME: ${groupName}
+┣▣ 🔆 ID: ${groupId}
+┣▣ 📅 CREATED: ${groupCreation}
+┣▣
+┣▣ 📋 STATS
+┣▣ 👥 TOTAL: ${groupSize} members
+┣▣ 👑 ADMINS: ${adminCount}
+┣▣
+┣▣ 📋 DESCRIPTION
+┣▣ 📝 ${groupDesc}
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+            contextInfo: getContextInfo({ sender: sender })
+        }, { quoted: null });
+    } catch (e) {
+        console.log(e);
+        reply(`❌ ERROR: ${e.message}\n\n⚡ ${config.BOT_NAME} ✨`);
+    }
+});
+
+// 2. TAG ALL MEMBERS COMMAND
+cmd({
+    pattern: "tagall",
+    alias: ["everyone", "mentionall", "all"],
+    react: "📢",
+    desc: "Tag all group members",
+    category: "group",
+    filename: __filename
+},
+async (conn, mek, m, { from, isGroup, isAdmins, sender, participants, reply, args }) => {
+    try {
+        if (!isGroup) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ This command can only be used in groups
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        if (!isAdmins) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Only admins can use this command
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        let message = args.join(' ') || 'HELLO EVERYONE! 📢';
+        let mentions = [];
+        let mentionText = '';
+
+        for (let participant of participants) {
+            mentions.push(participant.id);
+            mentionText += `@${participant.id.split('@')[0]} `;
+        }
+
+        await conn.sendMessage(from, {
+            text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ 📢 MENTION ALL
+┣▣ 📝 MESSAGE: ${message}
+┣▣
+┣▣ 📋 MEMBERS
+┣▣ ${mentionText}
+┣▣
+┣▣ 👥 TOTAL: ${participants.length} members
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+            mentions: mentions,
+            contextInfo: getContextInfo({ sender: sender })
+        }, { quoted: null });
+    } catch (e) {
+        console.log(e);
+        reply(`❌ ERROR: ${e.message}\n\n⚡ ${config.BOT_NAME} ✨`);
+    }
+});
+
+// 3. KICK/REMOVE COMMAND
+cmd({
+    pattern: "kick",
+    alias: ["remove", "ban"],
+    react: "👢",
+    desc: "Remove member from group",
+    category: "group",
+    filename: __filename
+},
+async (conn, mek, m, { from, isGroup, isAdmins, isBotAdmins, sender, participants, groupAdmins, reply, quoted }) => {
+    try {
+        if (!isGroup) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ This command can only be used in groups
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        if (!isAdmins) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ You need to be admin to use this command
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        if (!isBotAdmins) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Bot needs to be admin to use this command
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        let usersToKick = [];
+
+        if (m.quoted && m.quoted.sender) {
+            usersToKick.push(m.quoted.sender);
+        } else if (m.mentionedJid && m.mentionedJid.length > 0) {
+            usersToKick = m.mentionedJid;
+        } else {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ⚠️ USAGE
+┣▣ 📌 Tag or reply to the user to kick
+┣▣ 📌 Example: *.kick @user*
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        usersToKick = usersToKick.filter(user => !groupAdmins.includes(user));
+
+        if (usersToKick.length === 0) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ⚠️ NOTICE
+┣▣ ❌ Cannot kick admin users
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        for (let user of usersToKick) {
+            await conn.groupParticipantsUpdate(from, [user], 'remove');
+        }
+
+        let mentions = [];
+        let mentionText = '';
+        for (let user of usersToKick) {
+            mentions.push(user);
+            mentionText += `@${user.split('@')[0]} `;
+        }
+
+        await conn.sendMessage(from, {
+            text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ 👢 USER KICKED
+┣▣
+┣▣ 📋 KICKED USERS
+┣▣ ${mentionText}
+┣▣
+┣▣ ✅ ${usersToKick.length} user(s) removed
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+            mentions: mentions,
+            contextInfo: getContextInfo({ sender: sender })
+        }, { quoted: null });
+    } catch (e) {
+        console.log(e);
+        reply(`❌ ERROR: ${e.message}\n\n⚡ ${config.BOT_NAME} ✨`);
+    }
+});
+
+// 4. ADD COMMAND
+cmd({
+    pattern: "add",
+    alias: ["invite"],
+    react: "➕",
+    desc: "Add member to group",
+    category: "group",
+    filename: __filename
+},
+async (conn, mek, m, { from, isGroup, isAdmins, isBotAdmins, sender, args, reply }) => {
+    try {
+        if (!isGroup) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Group only
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        if (!isAdmins) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Admin only
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        if (!args[0]) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ⚠️ USAGE
+┣▣ 📌 *.add 2557XXXXXXXX*
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        let number = args[0].replace(/[^0-9]/g, '');
+        if (number.length < 10) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ INVALID
+┣▣ ⚠️ Invalid phone number
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        let user = number + '@s.whatsapp.net';
+        await conn.groupParticipantsUpdate(from, [user], 'add');
+
+        await conn.sendMessage(from, {
+            text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ➕ USER ADDED
+┣▣ ✅ @${number} was added successfully
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+            mentions: [user],
+            contextInfo: getContextInfo({ sender: sender })
+        }, { quoted: null });
+    } catch (e) {
+        console.log(e);
+        reply(`❌ ERROR: ${e.message}\n\n⚡ ${config.BOT_NAME} ✨`);
+    }
+});
+
+// 5. GROUP LINK COMMAND
+cmd({
+    pattern: "grouplink",
+    alias: ["link", "invitelink"],
+    react: "🔗",
+    desc: "Get group invite link",
+    category: "group",
+    filename: __filename
+},
+async (conn, mek, m, { from, isGroup, isAdmins, isBotAdmins, sender, reply }) => {
+    try {
+        if (!isGroup) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Group only
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        if (!isAdmins && !isBotAdmins) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Admin only
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        const link = await conn.groupInviteCode(from);
+        const inviteLink = `https://chat.whatsapp.com/${link}`;
+
+        await conn.sendMessage(from, {
+            text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ 🔗 GROUP LINK
+┣▣ 📎 ${inviteLink}
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+            contextInfo: getContextInfo({ sender: sender })
+        }, { quoted: null });
+    } catch (e) {
+        console.log(e);
+        reply(`❌ ERROR: ${e.message}\n\n⚡ ${config.BOT_NAME} ✨`);
+    }
+});
+
+// 6. MUTE GROUP COMMAND
+cmd({
+    pattern: "mute",
+    alias: ["lock", "close"],
+    react: "🔇",
+    desc: "Mute group (only admins can send messages)",
+    category: "group",
+    filename: __filename
+},
+async (conn, mek, m, { from, isGroup, isAdmins, isBotAdmins, sender, reply }) => {
+    try {
+        if (!isGroup) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Group only
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        if (!isAdmins) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Admin only
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        await conn.groupSettingUpdate(from, 'announcement');
+
+        await conn.sendMessage(from, {
+            text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ 🔇 GROUP MUTED
+┣▣ ✅ Only admins can send messages now
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+            contextInfo: getContextInfo({ sender: sender })
+        }, { quoted: null });
+    } catch (e) {
+        console.log(e);
+        reply(`❌ ERROR: ${e.message}\n\n⚡ ${config.BOT_NAME} ✨`);
+    }
+});
+
+// 7. UNMUTE GROUP COMMAND
+cmd({
+    pattern: "unmute",
+    alias: ["unlock", "open"],
+    react: "🔊",
+    desc: "Unmute group (everyone can send messages)",
+    category: "group",
+    filename: __filename
+},
+async (conn, mek, m, { from, isGroup, isAdmins, isBotAdmins, sender, reply }) => {
+    try {
+        if (!isGroup) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Group only
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        if (!isAdmins) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Admin only
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        await conn.groupSettingUpdate(from, 'not_announcement');
+
+        await conn.sendMessage(from, {
+            text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ 🔊 GROUP UNMUTED
+┣▣ ✅ Everyone can send messages now
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+            contextInfo: getContextInfo({ sender: sender })
+        }, { quoted: null });
+    } catch (e) {
+        console.log(e);
+        reply(`❌ ERROR: ${e.message}\n\n⚡ ${config.BOT_NAME} ✨`);
+    }
+});
+
+// 8. HIDE TAG COMMAND
+cmd({
+    pattern: "htag",
+    alias: ["hidemsg", "hidetag"],
+    react: "👻",
+    desc: "Send hidden message to all members",
+    category: "group",
+    filename: __filename
+},
+async (conn, mek, m, { from, isGroup, isAdmins, sender, participants, args, reply }) => {
+    try {
+        if (!isGroup) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Group only
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        if (!isAdmins) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Admin only
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        let message = args.join(' ') || 'HIDDEN MESSAGE 👻';
+        let mentions = participants.map(a => a.id);
+
+        await conn.sendMessage(from, {
+            text: message,
+            mentions: mentions,
+            contextInfo: getContextInfo({ sender: sender })
+        }, { quoted: null });
+    } catch (e) {
+        console.log(e);
+        reply(`❌ ERROR: ${e.message}\n\n⚡ ${config.BOT_NAME} ✨`);
+    }
+});
+
+// 9. DELETE COMMAND (FOR BOT MESSAGES)
+cmd({
+    pattern: "del",
+    alias: ["delete", "remove"],
+    react: "🗑️",
+    desc: "Delete bot's message",
+    category: "group",
+    filename: __filename
+},
+async (conn, mek, m, { from, isGroup, isAdmins, sender, quoted, reply }) => {
+    try {
+        if (!m.quoted) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ⚠️ USAGE
+┣▣ 📌 Reply to bot's message with *.del*
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        const key = {
+            remoteJid: from,
+            fromMe: true,
+            id: m.quoted.key.id
+        };
+        await conn.sendMessage(from, { delete: key });
+    } catch (e) {
+        console.log(e);
+        reply(`❌ ERROR: ${e.message}\n\n⚡ ${config.BOT_NAME} ✨`);
+    }
+});
+
+// 10. REVOKE GROUP LINK COMMAND
+cmd({
+    pattern: "revoke",
+    alias: ["resetlink", "newlink"],
+    react: "🔄",
+    desc: "Reset group invite link",
+    category: "group",
+    filename: __filename
+},
+async (conn, mek, m, { from, isGroup, isAdmins, isBotAdmins, sender, reply }) => {
+    try {
+        if (!isGroup) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Group only
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        if (!isAdmins) {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ❌ ERROR
+┣▣ ⚠️ Admin only
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+                contextInfo: getContextInfo({ sender: sender })
+            }, { quoted: null });
+        }
+
+        await conn.groupRevokeInvite(from);
+        const newCode = await conn.groupInviteCode(from);
+        const newLink = `https://chat.whatsapp.com/${newCode}`;
+
+        await conn.sendMessage(from, {
+            text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ 🔄 LINK REVOKED
+┣▣ 📎 NEW LINK: ${newLink}
+┣▣
+┣▣ ⚡ ${config.BOT_NAME}
+┗▣`,
+            contextInfo: getContextInfo({ sender: sender })
+        }, { quoted: null });
+    } catch (e) {
+        console.log(e);
+        reply(`❌ ERROR: ${e.message}\n\n⚡ ${config.BOT_NAME} ✨`);
+    }
+});
