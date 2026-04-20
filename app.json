@@ -1,8 +1,8 @@
 {
-  "name": "𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃",
-  "description": "WhatsApp bot made by BIN ADNAN",
-  "logo": "https://files.catbox.moe/8a9abd.png",
-  "keywords": ["𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃"],
+  "name": "𝐓𝐘𝐑𝐄𝐗 𝐌𝐃",
+  "description": "WhatsApp bot made by Tyrex Tech",
+  "logo": "https://i.ibb.co/PsJQ5wcQ/RD32353637343330363638313140732e77686174736170702e6e6574-634462.jpg",
+  "keywords": ["TYREX-MD", "whatsapp-bot", "tyrex"],
   "success_url": "/",
 
   "stack": "container",
@@ -14,38 +14,37 @@
     },  
     
     "STICKER_NAME": {
-      "description": "type your sticker pack name.",
+      "description": "Type your sticker pack name.",
       "required": true,
-      "value": "𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃"
+      "value": "𝐓𝐘𝐑𝐄𝐗 𝐌𝐃"
     }, 
 
     "CUSTOM_STATUS_EMOJIS": {
-      "description": "feed in emoji of your desire.",
+      "description": "Feed in emoji of your desire.",
       "required": true,
-      "value": "🎭"
+      "value": "👑"
     }, 
+    
     "PREFIX": {
-      "description": "paste your bot prefix note! Don't apply null prefix.",
+      "description": "Paste your bot prefix. Note: Don't apply null prefix.",
       "required": false,
       "value": "."
     },
     
     "MODE": {
-      "description": "select your bot work type public-private-inbox-group.",
+      "description": "Select your bot work type: public / private / inbox / group.",
       "required": false,
       "value": "public"
-      
     },
     
-    
     "ALWAYS_ONLINE": {
-      "description": "Make it true if want always online.",
+      "description": "Make it true if you want always online.",
       "required": false,
       "value": "true"  
     },    
   
     "AUTO_VOICE": {
-      "description": "Make it true if want automatic voice reply .",
+      "description": "Make it true if you want automatic voice reply.",
       "required": true,
       "value": "false"
     }, 
@@ -62,7 +61,6 @@
       "value": "false"
     }, 
 
-
     "AUTO_STATUS_SEEN": {
       "description": "Make it true for automatic status seen.",
       "required": true,
@@ -70,56 +68,51 @@
     }, 
 
     "AUTO_STATUS_REACT": {
-      "description": "make it true for automatic status reaction or like.",
+      "description": "Make it true for automatic status reaction or like.",
       "required": true,
       "value": "true"
     }, 
 
     "AUTO_STATUS_REPLY": {
-      "description": "Make it true for auto reply msg on status seen.",
+      "description": "Make it true for auto reply message on status seen.",
       "required": true,
       "value": "false"
     }, 
 
     "AUTO_STATUS_MSG": {
-      "description": "Type custom message on status reply",
+      "description": "Type custom message on status reply.",
       "required": true,
-      "value": "*𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃 𝐕𝐈𝐄𝐖𝐄𝐃✅*"
-   
-     }, 
+      "value": "*𝐓𝐘𝐑𝐄𝐗 𝐌𝐃 𝐕𝐈𝐄𝐖𝐄𝐃* ✅"
+    }, 
     
     "OWNER_NAME": {
       "description": "Type Bot Owner Name.",
       "required": false,
-      "value": "BIN ADNAN"
+      "value": "𝐓𝐲𝐫𝐞𝐱 𝐓𝐞𝐜𝐡"
     }, 
 
     "OWNER_NUMBER": {
-      "description": "put the owner number for bot.",
+      "description": "Put the owner number for bot.",
       "required": false,
-      "value": "255770100487"
-
+      "value": "255628378557"
     }, 
 
     "BOT_NAME": {
       "description": "Type here the bot name.",
       "required": true,
-      "value": "𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃"
-
-      }, 
+      "value": "𝐓𝐘𝐑𝐄𝐗 𝐌𝐃"
+    }, 
 
     "ANTI_LINK": {
       "description": "Make it true if you want bot auto remove group link.",
       "required": true,
       "value": "false"
-      
     },
 
-     "ANTI_LINK_KICK": {
-      "description": "Make it true if you want bot auto remove group link.",
+    "ANTI_LINK_KICK": {
+      "description": "Make it true if you want bot auto kick on link send.",
       "required": true,
       "value": "false"
-      
     },
     
     "ANTI_BAD": {
@@ -128,32 +121,32 @@
       "value": "false"
     },
 
-   "MENTION_REPLY": {
-      "description": "make it true if want mention reply if someone menetion you.",
+    "MENTION_REPLY": {
+      "description": "Make it true if you want mention reply when someone mentions you.",
       "required": true,
       "value": "false"
     },
     
     "MENU_IMAGE_URL": {
-      "description": "add url for mention reply and menu if want.",
+      "description": "Add URL for menu image.",
       "required": true,
-      "value": "https://files.catbox.moe/8a9abd.png"
+      "value": "https://i.ibb.co/PsJQ5wcQ/RD32353637343330363638313140732e77686174736170702e6e6574-634462.jpg"
     },
     
-     "DESCRIPTION": {
-      "description": "add caption for menu and other",
+    "DESCRIPTION": {
+      "description": "Add caption for menu and other.",
       "required": true,
-      "value": "*© 𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃*"
+      "value": "*© 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐁𝐲 𝐓𝐲𝐫𝐞𝐱 𝐓𝐞𝐜𝐡*"
     },
 
-      "DELETE_LINKS": {
-      "description": "remove links from group automatically without removing member",
+    "DELETE_LINKS": {
+      "description": "Remove links from group automatically without removing member.",
       "required": false,
       "value": "false"
     },
     
     "AUTO_RECORDING": {
-      "description": "Make it true if you want auto recoding.",
+      "description": "Make it true if you want auto recording.",
       "required": true,
       "value": "false"
     },
@@ -174,33 +167,37 @@
       "description": "Make it true if you want custom reactions.",
       "required": true,
       "value": "false"
-      
     }, 
     
     "CUSTOM_REACT_EMOJIS": {
-      "description": "put here custom react react emojis.",
+      "description": "Put here custom react emojis.",
       "required": true,
-      "value": "💝,💖,💗,❤️‍🩹,❤️,🧡,💛,💚,💙,💜,🤎,🖤,🤍"
+      "value": "👑,🔥,💪,❤️,💙,💚,💛,🧡,💜,🤎,🖤,🤍"
     }, 
     
     "ANTI_DEL_PATH": {
-      "description": "change it to -same- if you want to resend deleted message in same chat",
+      "description": "Change it to 'same' if you want to resend deleted message in same chat.",
       "required": true,
       "value": "inbox"
     }, 
 
     "READ_MESSAGE": {
-      "description": "Make it true if you want bot read your all sms just now.",
+      "description": "Make it true if you want bot to read all your messages.",
       "required": false,
       "value": "false"
+    },
+
+    "NEWS_LETTER_JID": {
+      "description": "Put your newsletter JID for context info.",
+      "required": false,
+      "value": "120363424973782944@newsletter"
     }
+  },
 
-},
-
-     "buildpacks": [
-        {
-            "url": "https://github.com/heroku/heroku-buildpack-nodejs.git"
-        }
-     ],
+  "buildpacks": [
+    {
+      "url": "https://github.com/heroku/heroku-buildpack-nodejs.git"
+    }
+  ],
   "stack": "heroku-24"
 }
