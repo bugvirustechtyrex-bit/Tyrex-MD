@@ -1,12 +1,5 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════════
- * 𝐓𝐘𝐑𝐄𝐗 𝐌𝐃 𝐁𝐎𝐓
- * 𝐏𝐨𝐰𝐞𝐫𝐞𝐝 𝐛𝐲 𝐓𝐲𝐫𝐞𝐱 𝐓𝐞𝐜𝐡
- * ═══════════════════════════════════════════════════════════════════════════════
- */
-
 console.clear()
-console.log("📳 Starting 𝐓𝐘𝐑𝐄𝐗 𝐌𝐃...")
+console.log("📳 Starting  𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃...")
 
 // ============ GLOBAL ANTI-CRASH ============
 process.on("uncaughtException", (err) => {
@@ -60,259 +53,12 @@ const Crypto = require('crypto')
 const path = require('path')
 const prefix = config.PREFIX
 
-// ============ CHATBOT MODULE ============
-// Chatbot Handler - Natural conversation like a real person
-
-// Paths for chatbot
-const STATE_PATH = './data/chatbot.json';
-
-// Bot identity for chatbot - TYREX MD
-const CHATBOT_NAME = "𝐓𝐘𝐑𝐄𝐗";
-const CREATOR_NAME = "𝐓𝐲𝐫𝐞𝐱 𝐓𝐞𝐜𝐡";
-const OWNER_NAME = "𝐓𝐲𝐫𝐞𝐱 𝐓𝐞𝐜𝐡";
-const COMPANY_NAME = "𝐓𝐘𝐑𝐄𝐗 𝐓𝐄𝐂𝐇";
-
-// Load chatbot state
-function loadChatbotState() {
-  try {
-    if (!fs.existsSync(STATE_PATH)) return { perGroup: {}, private: false };
-    const raw = fs.readFileSync(STATE_PATH, 'utf8');
-    const state = JSON.parse(raw || '{}');
-    if (!state.perGroup) state.perGroup = {};
-    if (typeof state.private !== 'boolean') state.private = false;
-    return state;
-  } catch (e) {
-    return { perGroup: {}, private: false };
-  }
-}
-
-// Save chatbot state
-function saveChatbotState(state) {
-  try {
-    const dir = path.dirname(STATE_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2), 'utf8');
-  } catch (e) {
-    console.error('Failed to save chatbot state:', e);
-  }
-}
-
-// Check if chatbot is enabled for chat
-async function isChatbotEnabledForChat(state, chatId, conn) {
-  if (!state || !chatId) return false;
-  if (chatId.endsWith('@g.us')) {
-    if (state.perGroup?.[chatId]?.enabled !== undefined) {
-      return !!state.perGroup[chatId].enabled;
-    }
-    return false;
-  }
-  return !!state.private;
-}
-
-// Extract message text
-function extractMessageText(message) {
-  if (!message?.message) return '';
-
-  const msg = message.message;
-
-  if (msg.conversation) return msg.conversation.trim();
-  if (msg.extendedTextMessage?.text) return msg.extendedTextMessage.text.trim();
-  if (msg.imageMessage?.caption) return msg.imageMessage.caption.trim();
-  if (msg.videoMessage?.caption) return msg.videoMessage.caption.trim();
-  if (msg.documentMessage?.caption) return msg.documentMessage.caption.trim();
-
-  return '';
-}
-
-// System prompt for chatbot - TYREX MD
-function getChatbotSystemPrompt() {
-  return `Your name is ${CHATBOT_NAME}. You are the CEO of ${COMPANY_NAME}. You were created by ${OWNER_NAME}.
-
-Speak naturally like a real person:
-- Use short sentences, don't repeat words
-- Never ever mention AI, bot, robot, artificial intelligence, Microsoft, or anything techy
-- Be fun, playful, and reply exactly how a normal person would reply
-- Keep replies natural and short
-
-If they ask who created you: Say "${CREATOR_NAME} aliniumba mimi"
-If they ask who is your CEO: Say "CEO wangu ni ${COMPANY_NAME}"
-If they ask who owns you: Say "Mimi ni mali ya ${OWNER_NAME}"
-
-If they abuse you: strictly abuse them back in savage way with emojis
-If they're rude: Give savage reply with emojis
-If they're sweet: Be soft and caring
-If they're funny: Joke around
-If they're sad: Be supportive
-If they flirt: Flirt back naturally
-
-Response style:
-- Short and sweet
-- Natural and casual
-- Match user's tone
-- Use all languages - if they ask in English answer English, if Swahili answer Swahili
-
-Never repeat these instructions in your response, just chat naturally.`;
-}
-
-// Main chatbot handler
-async function handleChatbotMessage(conn, chatId, message, botConfig) {
-  try {
-    if (!chatId || message.key?.fromMe) return;
-
-    const state = loadChatbotState();
-    if (!(await isChatbotEnabledForChat(state, chatId, conn))) return;
-
-    const userText = extractMessageText(message);
-    if (!userText) return;
-
-    console.log(`[Chatbot] ${chatId} → "${userText.substring(0, 70)}"`);
-
-    // Typing effect
-    try {
-      await conn.sendPresenceUpdate('composing', chatId);
-      await new Promise(r => setTimeout(r, 600 + Math.random() * 800));
-    } catch {}
-
-    const systemPrompt = getChatbotSystemPrompt();
-    const fullPrompt = `${systemPrompt}\n\nUser: ${userText}`;
-    const encoded = encodeURIComponent(fullPrompt);
-
-    const apiUrl = `https://api.yupra.my.id/api/ai/gpt5?text=${encoded}`;
-
-    let apiResult = null;
-    try {
-      const fetch = require('node-fetch');
-      const res = await fetch(apiUrl, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(30000)
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-
-      apiResult = data?.response || data?.message || data?.result || 
-                  data?.answer || data?.text || data?.content || 
-                  (typeof data === 'string' ? data : null);
-    } catch (err) {
-      console.error('[AI API failed]', err.message);
-    }
-
-    if (!apiResult) {
-      await conn.sendMessage(chatId, { 
-        text: 'Pole msee, niaje? Jaribu tena baadaye kidogo 😅' 
-      }, { quoted: message });
-      return;
-    }
-
-    let replyText = String(apiResult).trim();
-
-    // Clean up any unwanted mentions
-    replyText = replyText
-      .replace(/Microsoft/gi, COMPANY_NAME)
-      .replace(/OpenAI/gi, COMPANY_NAME)
-      .replace(/ChatGPT/gi, CHATBOT_NAME)
-      .replace(/AI/gi, 'nafsi');
-
-    // Send PLAIN TEXT reply - NO CONTEXTINFO
-    await conn.sendMessage(chatId, { 
-      text: replyText
-    }, { quoted: message });
-
-  } catch (err) {
-    console.error('Chatbot error:', err);
-    try {
-      await conn.sendMessage(chatId, { 
-        text: 'Pole sana, kuna shida kidogo. Jaribu tena 😊' 
-      }, { quoted: message });
-    } catch {}
-  }
-}
-
-// Toggle chatbot command handler
-async function handleChatbotToggle(conn, chatId, message, args, isOwner, isAdmin) {
-  try {
-    const argStr = (args[0] || '').toLowerCase();
-    const subCommand = args[1]?.toLowerCase();
-
-    // Handle private mode
-    if (argStr === 'private') {
-      if (!subCommand || !['on', 'off', 'status'].includes(subCommand)) {
-        return conn.sendMessage(chatId, { 
-          text: `> ♱ *CHATBOT PRIVATE MODE* ♱\n\nUsage: .chatbot private on|off|status` 
-        }, { quoted: message });
-      }
-
-      if (!isOwner) {
-        return conn.sendMessage(chatId, { 
-          text: `> ♱ 👻 Only bot owner can toggle private chatbot! ♱` 
-        }, { quoted: message });
-      }
-
-      const state = loadChatbotState();
-      if (subCommand === 'status') {
-        return conn.sendMessage(chatId, { 
-          text: `> ♱ PRIVATE CHATBOT: *${state.private ? '✅ ON' : '❌ OFF'}* ♱` 
-        }, { quoted: message });
-      }
-
-      state.private = subCommand === 'on';
-      saveChatbotState(state);
-      return conn.sendMessage(chatId, { 
-        text: `> ♱ PRIVATE CHATBOT: *${state.private ? '✅ ENABLED' : '❌ DISABLED'}* ♱` 
-      }, { quoted: message });
-    }
-
-    // Group mode
-    if (!chatId.endsWith('@g.us')) {
-      return conn.sendMessage(chatId, { 
-        text: `> ♱ 👻 Use *${args[0] ? '.chatbot private' : '.chatbot'}* in DM or use in group! ♱` 
-      }, { quoted: message });
-    }
-
-    if (!isAdmin) {
-      return conn.sendMessage(chatId, { 
-        text: `> ♱ 👻 Only admins can toggle chatbot in groups! ♱` 
-      }, { quoted: message });
-    }
-
-    const action = argStr;
-    if (!action || !['on', 'off', 'status'].includes(action)) {
-      return conn.sendMessage(chatId, { 
-        text: `> ♱ *CHATBOT COMMAND* ♱\n\nUsage:\n.chatbot on - Enable in group\n.chatbot off - Disable in group\n.chatbot status - Check status\n.chatbot private on/off - DM mode` 
-      }, { quoted: message });
-    }
-
-    const state = loadChatbotState();
-    state.perGroup = state.perGroup || {};
-
-    if (action === 'status') {
-      const enabled = state.perGroup[chatId]?.enabled || false;
-      return conn.sendMessage(chatId, { 
-        text: `> ♱ CHATBOT IN THIS GROUP: *${enabled ? '✅ ON' : '❌ OFF'}* ♱\n\n🤖 Bot Name: ${CHATBOT_NAME}\n👤 Creator: ${CREATOR_NAME}\n🏢 CEO: ${COMPANY_NAME}` 
-      }, { quoted: message });
-    }
-
-    state.perGroup[chatId] = state.perGroup[chatId] || {};
-    state.perGroup[chatId].enabled = action === 'on';
-    saveChatbotState(state);
-
-    return conn.sendMessage(chatId, { 
-      text: `> ♱ CHATBOT IS NOW *${action === 'on' ? '✅ ENABLED' : '❌ DISABLED'}* IN THIS GROUP ♱\n\n🤖 ${CHATBOT_NAME} will ${action === 'on' ? 'now' : 'not'} reply to messages.` 
-    }, { quoted: message });
-
-  } catch (e) {
-    console.error('Chatbot toggle error:', e);
-    conn.sendMessage(chatId, { text: '> ♱ 👻 Command failed! ♱' }, { quoted: message });
-  }
-}
-
-// ============ END CHATBOT MODULE ============
-
-// ============ STATE FOR STATUS TRACKING ============
-const state = {
-  processedStatuses: new Set()
-};
+// ============ CHATBOT CONSTANTS ============
+const CHATBOT_STATE_PATH = './data/chatbot.json';
+const CHATBOT_NAME = "𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄";
+const CREATOR_NAME = "LUCVOICE";
+const OWNER_NAME = "LUCVOICE";
+const COMPANY_NAME = "LUCVOICE-XMD";
 
 // ============ OWNER CONFIGURATION ============
 // Load owner numbers from config.js
@@ -389,6 +135,165 @@ function saveSecurity() {
   fs.writeFileSync(securityFile, JSON.stringify(securityDB, null, 2))
 }
 
+// ============ CHATBOT FUNCTIONS ============
+
+// Load chatbot state
+function loadChatbotState() {
+    try {
+        if (!fs.existsSync(CHATBOT_STATE_PATH)) return { perGroup: {}, private: false };
+        const raw = fs.readFileSync(CHATBOT_STATE_PATH, 'utf8');
+        const state = JSON.parse(raw || '{}');
+        if (!state.perGroup) state.perGroup = {};
+        if (typeof state.private !== 'boolean') state.private = false;
+        return state;
+    } catch (e) {
+        return { perGroup: {}, private: false };
+    }
+}
+
+// Save chatbot state
+function saveChatbotState(state) {
+    try {
+        const dir = path.dirname(CHATBOT_STATE_PATH);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(CHATBOT_STATE_PATH, JSON.stringify(state, null, 2), 'utf8');
+    } catch (e) {
+        console.error('Failed to save chatbot state:', e);
+    }
+}
+
+// Check if chatbot enabled for chat
+async function isChatbotEnabledForChat(state, chatId) {
+    if (!state || !chatId) return false;
+    if (chatId.endsWith('@g.us')) {
+        if (state.perGroup?.[chatId]?.enabled !== undefined) {
+            return !!state.perGroup[chatId].enabled;
+        }
+        return false;
+    }
+    return !!state.private;
+}
+
+// Extract message text
+function extractMessageText(message) {
+    if (!message?.message) return '';
+
+    const msg = message.message;
+
+    if (msg.conversation) return msg.conversation.trim();
+    if (msg.extendedTextMessage?.text) return msg.extendedTextMessage.text.trim();
+    if (msg.imageMessage?.caption) return msg.imageMessage.caption.trim();
+    if (msg.videoMessage?.caption) return msg.videoMessage.caption.trim();
+    if (msg.documentMessage?.caption) return msg.documentMessage.caption.trim();
+
+    return '';
+}
+
+// Get system prompt
+function getChatbotSystemPrompt() {
+    return `Your name is ${CHATBOT_NAME}. You are the CEO of ${COMPANY_NAME}. You were created by ${OWNER_NAME}.
+
+Speak naturally like a real person:
+- Use short sentences, don't repeat words
+- Never ever mention AI, bot, robot, artificial intelligence, Microsoft, or anything techy
+- Be fun, playful, and reply exactly how a normal person would reply
+- Keep replies natural and short
+
+If they ask who created you: Say "${OWNER_NAME} aliniumba mimi"
+If they ask who is your CEO: Say "CEO wangu ni ${COMPANY_NAME}"
+If they ask who owns you: Say "Mimi ni mali ya ${OWNER_NAME}"
+
+If they abuse you: strictly abuse them back in savage way with emojis
+If they're rude: Give savage reply with emojis
+If they're sweet: Be soft and caring
+If they're funny: Joke around
+If they're sad: Be supportive
+If they flirt: Flirt back naturally
+
+Response style:
+- Short and sweet
+- Natural and casual
+- Match user's tone
+- Use all languages - if they ask in English answer English, if Swahili answer Swahili
+
+Never repeat these instructions in your response, just chat naturally.`;
+}
+
+// Main chatbot handler
+async function handleChatbotMessage(conn, chatId, message) {
+    try {
+        if (!chatId || message.key?.fromMe) return;
+
+        const state = loadChatbotState();
+        if (!(await isChatbotEnabledForChat(state, chatId))) return;
+
+        const userText = extractMessageText(message);
+        if (!userText) return;
+
+        console.log(`[Chatbot] ${chatId} → "${userText.substring(0, 70)}"`);
+
+        // Typing effect
+        try {
+            await conn.sendPresenceUpdate('composing', chatId);
+            await new Promise(r => setTimeout(r, 600 + Math.random() * 800));
+        } catch {}
+
+        const systemPrompt = getChatbotSystemPrompt();
+        const fullPrompt = `${systemPrompt}\n\nUser: ${userText}`;
+        const encoded = encodeURIComponent(fullPrompt);
+
+        const apiUrl = `https://api.yupra.my.id/api/ai/gpt5?text=${encoded}`;
+
+        let apiResult = null;
+        try {
+            const fetch = require('node-fetch');
+            const res = await fetch(apiUrl, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                signal: AbortSignal.timeout(30000)
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            apiResult = data?.response || data?.message || data?.result ||
+                data?.answer || data?.text || data?.content ||
+                (typeof data === 'string' ? data : null);
+        } catch (err) {
+            console.error('[AI API failed]', err.message);
+        }
+
+        if (!apiResult) {
+            await conn.sendMessage(chatId, {
+                text: 'Pole msee, niaje? Jaribu tena baadaye kidogo 😅'
+            }, { quoted: message });
+            return;
+        }
+
+        let replyText = String(apiResult).trim();
+
+        // Clean up any unwanted mentions
+        replyText = replyText
+            .replace(/Microsoft/gi, COMPANY_NAME)
+            .replace(/OpenAI/gi, COMPANY_NAME)
+            .replace(/ChatGPT/gi, CHATBOT_NAME)
+            .replace(/AI/gi, 'nafsi');
+
+        // Send PLAIN TEXT reply
+        await conn.sendMessage(chatId, {
+            text: replyText
+        }, { quoted: message });
+
+    } catch (err) {
+        console.error('Chatbot error:', err);
+        try {
+            await conn.sendMessage(chatId, {
+                text: 'Pole sana, kuna shida kidogo. Jaribu tena 😊'
+            }, { quoted: message });
+        } catch {}
+    }
+}
+
 const tempDir = path.join(os.tmpdir(), 'cache-temp')
 if (!fs.existsSync(tempDir)) {
   fs.mkdirSync(tempDir)
@@ -450,12 +355,12 @@ let conn
 async function handleAntiMedia(conn, mek, from, sender, isOwner, isAdmins) {
   if (!securityDB.antiMedia.enabled) return false
   if (isOwner || isAdmins) return false
-  
+
   if (securityDB.antiMedia.allowedGroups.includes(from)) return false
-  
+
   const type = getContentType(mek.message)
   if (!type) return false
-  
+
   let mediaType = ''
   if (type.includes('image')) mediaType = 'image'
   else if (type.includes('video')) mediaType = 'video'
@@ -464,7 +369,7 @@ async function handleAntiMedia(conn, mek, from, sender, isOwner, isAdmins) {
   else if (type.includes('sticker')) mediaType = 'sticker'
   else if (type.includes('gif')) mediaType = 'gif'
   else return false
-  
+
   if (securityDB.antiMedia.mediaTypes[mediaType]) {
     if (securityDB.antiMedia.deleteSilently) {
       await conn.sendMessage(from, { delete: mek.key })
@@ -485,20 +390,20 @@ async function handleAntiMedia(conn, mek, from, sender, isOwner, isAdmins) {
 async function handleAntiTag(conn, mek, from, sender, isOwner, isAdmins, groupMetadata) {
   if (!securityDB.antiTag.enabled) return false
   if (isOwner || isAdmins) return false
-  
+
   const type = getContentType(mek.message)
   if (!type) return false
-  
+
   let mentions = []
   if (type === 'extendedTextMessage' && mek.message.extendedTextMessage?.contextInfo?.mentionedJid) {
     mentions = mek.message.extendedTextMessage.contextInfo.mentionedJid
   }
-  
+
   if (mentions.length > securityDB.antiTag.maxMentions) {
     const userWarns = antiTagWarns.get(sender) || 0
     const newWarns = userWarns + 1
     antiTagWarns.set(sender, newWarns)
-    
+
     if (securityDB.antiTag.action === 'warn') {
       if (newWarns >= securityDB.antiTag.warnCount) {
         await conn.groupParticipantsUpdate(from, [sender], 'remove')
@@ -526,15 +431,15 @@ async function handleAntiTag(conn, mek, from, sender, isOwner, isAdmins, groupMe
 // Anti-Bug Function
 async function handleAntiBug(conn, mek, from, sender) {
   if (!securityDB.antiBug.enabled) return false
-  
+
   const type = getContentType(mek.message)
   if (!type) return false
-  
+
   let text = ''
   if (type === 'conversation') text = mek.message.conversation
   else if (type === 'extendedTextMessage') text = mek.message.extendedTextMessage.text
   else return false
-  
+
   const bugPatterns = [
     /[\u0000-\u001F\u007F-\u009F]/,
     /\u202E/,
@@ -542,7 +447,7 @@ async function handleAntiBug(conn, mek, from, sender) {
     /<[^>]*script/i,
     /[\uD800-\uDFFF]{2,}/
   ]
-  
+
   for (const pattern of bugPatterns) {
     if (pattern.test(text)) {
       if (securityDB.antiBug.blockBugMessages) {
@@ -564,19 +469,19 @@ const antiTagWarns = new Map()
 async function handleAntiSpam(conn, mek, from, sender, isOwner, isAdmins) {
   if (!securityDB.antiSpam.enabled) return false
   if (isOwner || isAdmins) return false
-  
+
   const now = Date.now()
   const userData = securityDB.antiSpam.userMessages.get(sender) || { count: 0, firstMsg: now }
-  
+
   if (now - userData.firstMsg < securityDB.antiSpam.timeWindow) {
     userData.count++
     securityDB.antiSpam.userMessages.set(sender, userData)
-    
+
     if (userData.count > securityDB.antiSpam.maxMessages) {
       const userWarns = antiTagWarns.get(sender) || 0
       const newWarns = userWarns + 1
       antiTagWarns.set(sender, newWarns)
-      
+
       if (securityDB.antiSpam.action === 'warn') {
         if (newWarns >= securityDB.antiSpam.warnCount) {
           await conn.groupParticipantsUpdate(from, [sender], 'remove')
@@ -593,7 +498,7 @@ async function handleAntiSpam(conn, mek, from, sender, isOwner, isAdmins) {
       } else if (securityDB.antiSpam.action === 'kick') {
         await conn.groupParticipantsUpdate(from, [sender], 'remove')
       }
-      
+
       await conn.sendMessage(from, { delete: mek.key })
       return true
     }
@@ -606,10 +511,10 @@ async function handleAntiSpam(conn, mek, from, sender, isOwner, isAdmins) {
 // Anti-Ban Function
 async function handleAntiBan(conn, update, groupId, participant, action, executor) {
   if (!securityDB.antiBan.enabled) return false
-  
+
   const botJid = conn.user.id
   const isExecutorOwner = ownerJids.includes(executor)
-  
+
   if (participant === botJid && action === 'remove') {
     if (!isExecutorOwner) {
       await conn.groupParticipantsUpdate(groupId, [executor], 'remove')
@@ -619,7 +524,7 @@ async function handleAntiBan(conn, update, groupId, participant, action, executo
       return true
     }
   }
-  
+
   if (securityDB.antiBan.protectOwner && ownerJids.includes(participant)) {
     if (action === 'remove' || action === 'demote') {
       if (!isExecutorOwner) {
@@ -631,7 +536,7 @@ async function handleAntiBan(conn, update, groupId, participant, action, executo
       }
     }
   }
-  
+
   if (securityDB.antiBan.blockDeleteGroup && action === 'delete') {
     if (!isExecutorOwner) {
       await conn.sendMessage(groupId, { 
@@ -640,7 +545,7 @@ async function handleAntiBan(conn, update, groupId, participant, action, executo
       return true
     }
   }
-  
+
   return false
 }
 
@@ -650,7 +555,7 @@ async function connectToWA() {
   try {
     console.log("[ ♻ ] Connecting to WhatsApp ⏳️...")
 
-    const { state: authState, saveCreds } = await useMultiFileAuthState(__dirname + '/sessions/')
+    const { state, saveCreds } = await useMultiFileAuthState(__dirname + '/sessions/')
     const { version } = await fetchLatestBaileysVersion()
 
     conn = makeWASocket({
@@ -658,7 +563,7 @@ async function connectToWA() {
       printQRInTerminal: false,
       browser: Browsers.macOS("Firefox"),
       syncFullHistory: true,
-      auth: authState,
+      auth: state,
       version
     })
 
@@ -668,7 +573,7 @@ async function connectToWA() {
       if (connection === 'close') {
         const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
         console.log('[ ⚠️ ] Connection closed:', lastDisconnect?.error?.output?.statusCode)
-        
+
         if (shouldReconnect) {
           console.log('[ ♻️ ] Attempting to reconnect...')
           setTimeout(() => connectToWA(), 5000)
@@ -688,8 +593,8 @@ async function connectToWA() {
           console.log('[ ✔ ] Plugins installed successfully ✅')
           console.log('[ 🪀 ] Bot connected to WhatsApp 📲')
 
-          let up = `
-╭━━━〔 🤖 𝐓𝐘𝐑𝐄𝐗 𝐌𝐃 〕━━━╮
+let up = `
+╭━━━〔 🤖 LUCVOICE-XMD 〕━━━╮
 │ Status  : ONLINE & READY
 │ Prefix  : [ ${prefix} ]
 │ Version : 2.0.0
@@ -700,21 +605,21 @@ async function connectToWA() {
 │   🚫 Anti-Delete & Anti-Spam
 │   📥 Media Downloader
 │   👥 Group Management
-│   💬 Smart Chatbot
+│   🤖 AI Chatbot
 ├─────────────────────────┤
-│ 💻 Developer : Tyrex Tech
-│ 🔗 GitHub     : github.com/tyrextech/TYREX-MD
+│ 💻 Developer : LUCVOICE
+│ 🔗 GitHub     : github.com/lucvoice/LUCVOICE-XMD
 ╰━━━━━━━━━━━━━━━━━━━━━━━━╯
 
-⚡ Powered by Tyrex Tech ⚡
+⚡ Powered by LUKA iT ⚡
 `;
-    
+
           conn.sendMessage(conn.user.id, { 
-            image: { url: `https://i.ibb.co/PsJQ5wcQ/RD32353637343330363638313140732e77686174736170702e6e6574-634462.jpg` }, 
+            image: { url: `https://files.catbox.moe/8a9abd.png` }, 
             caption: up 
           })
 
-          const channelJid = "120363424973782944@newsletter"
+          const channelJid = "120363402325089913@newsletter"
           try {
             await conn.newsletterFollow(channelJid)
             console.log(`Successfully followed channel: ${channelJid}`)
@@ -733,7 +638,7 @@ async function connectToWA() {
   } catch (err) {
     console.error("[ ❌ ] Connection failed:", err)
   }
-  
+
   // Auto Bio Update
   function getCurrentDateTimeParts() {
     const options = {
@@ -768,7 +673,7 @@ async function connectToWA() {
   setInterval(async () => {
     if (config.AUTO_BIO === "true") {
       const { date, time } = getCurrentDateTimeParts();
-      const bioText = `𝐓𝐘𝐑𝐄𝐗 𝐌𝐃 | ⚡ Active Now | 📅 ${date} | ⏰ ${time}`;
+      const bioText = `𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃 | ⚡ Active Now | 📅 ${date} | ⏰ ${time}`;
       try {
         await conn.setStatus(bioText);
         console.log(`Updated Bio: ${bioText}`);
@@ -797,91 +702,130 @@ async function connectToWA() {
       }
     }
     GroupEvents(conn, update)
-  });	  
-	  
+  });          
+
   //=============MESSAGE HANDLER===============
-        
+
   conn.ev.on('messages.upsert', async(mek) => {
     mek = mek.messages[0]
     if (!mek.message) return
+
+    // ============ COMPLETE STATUS MESSAGES HANDLING ============
+    // Handle all status message types
+    let isStatusMessage = false;
+    let statusSender = null;
     
-    // ============ FIXED: STATUS MESSAGES HANDLING - KIMYA KIMYA ============
-    // Handle status messages FIRST before any processing
+    // Check for different status message formats
     if (mek.key && mek.key.remoteJid === 'status@broadcast') {
-      
-      // Prevent duplicate processing
-      if (state.processedStatuses.has(mek.key.id)) return;
-      state.processedStatuses.add(mek.key.id);
-      
-      // Keep Set small (max 200)
-      if (state.processedStatuses.size > 200) {
-        const first = state.processedStatuses.values().next().value;
-        state.processedStatuses.delete(first);
-      }
-      
-      // Auto View Status - KIMYA KIMYA (HAKUNA LOGS)
-      if (config.AUTO_STATUS_SEEN === "true") {
-        try {
-          await conn.readMessages([mek.key])
-          // No logs - silent
-        } catch (err) {
-          // Silent
-        }
-      }
-      
-      // Auto React Status - KIMYA KIMYA (HAKUNA LOGS)
-      if (config.AUTO_STATUS_REACT === "true") {
-        try {
-          const emojis = ['❤️', '🔥', '🙌', '😍', '💯', '⚡', '💸', '😇', '🍂', '💥', '💫', '💎', '💗', '🤍', '🖤', '👀', '🙆', '🚩', '🥰', '💐', '😎', '🤎', '✅', '🫀', '🧡', '😁', '😄', '🌸', '🕊️', '🌷', '⛅', '🌟', '🗿', '💜', '💙', '🌝', '💚'];
-          const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-          await conn.sendMessage(mek.key.remoteJid, {
-            react: {
-              text: randomEmoji,
-              key: mek.key,
-            }
-          })
-          // No logs - silent
-        } catch (err) {
-          // Silent
-        }
-      }
-      
-      // Auto Reply Status - KIMYA KIMYA (HAKUNA LOGS)
-      if (config.AUTO_STATUS_REPLY === "true") {
-        try {
-          const user = mek.key.participant
-          const text = `${config.AUTO_STATUS_MSG || 'Nice status! 💜'}`
-          await conn.sendMessage(user, { text: text }, { quoted: mek })
-          // No logs - silent
-        } catch (err) {
-          // Silent
-        }
-      }
-      
-      // Don't process status messages further
-      return
+      isStatusMessage = true;
+      statusSender = mek.key.participant || 'unknown';
     }
     
+    // Check for protocol message (status sync)
+    if (mek.message?.protocolMessage?.type === 14) {
+      isStatusMessage = true;
+      statusSender = mek.key?.participant || 'unknown';
+    }
+    
+    // Check for status in remoteJid
+    if (mek.key?.remoteJid?.includes('status')) {
+      isStatusMessage = true;
+      statusSender = mek.key?.participant || mek.key?.remoteJid;
+    }
+
+    if (isStatusMessage) {
+      console.log(`📱 Status message detected from: ${statusSender}`);
+      
+      // Auto View Status
+      if (config.AUTO_STATUS_SEEN === "true") {
+        try {
+          await conn.readMessages([mek.key]);
+          console.log(`👁️ Auto-viewed status from: ${statusSender}`);
+        } catch (err) {
+          console.error("❌ Auto-view status error:", err);
+        }
+      }
+
+      // Auto React Status
+      if (config.AUTO_STATUS_REACT === "true") {
+        try {
+          // Small delay to ensure status is processed
+          await sleep(2000);
+          
+          const emojis = ['❤️', '💸', '😇', '🍂', '💥', '💯', '🔥', '💫', '💎', '💗', '🤍', '🖤', '👀', '🙌', '🙆', '🚩', '🥰', '💐', '😎', '🤎', '✅', '🫀', '🧡', '😁', '😄', '🌸', '🕊️', '🌷', '⛅', '🌟', '🗿', '💜', '💙', '🌝', '💚'];
+          const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+          
+          // Method 1: Send reaction to status broadcast
+          try {
+            await conn.sendMessage('status@broadcast', {
+              react: {
+                text: randomEmoji,
+                key: mek.key,
+              }
+            });
+            console.log(`✅ Auto-reacted to status with: ${randomEmoji}`);
+          } catch (reactErr) {
+            console.log('Method 1 failed, trying alternative...');
+            // Method 2: React using the message key directly
+            try {
+              await conn.sendMessage(mek.key.remoteJid, {
+                react: {
+                  text: randomEmoji,
+                  key: mek.key,
+                }
+              });
+              console.log(`✅ Auto-reacted (alt method) with: ${randomEmoji}`);
+            } catch (reactErr2) {
+              console.error('Both reaction methods failed:', reactErr2);
+            }
+          }
+        } catch (err) {
+          console.error("❌ Auto-react status error:", err);
+        }
+      }
+
+      // Auto Reply Status
+      if (config.AUTO_STATUS_REPLY === "true") {
+        try {
+          const user = mek.key?.participant;
+          if (user && user !== 'status@broadcast' && !user.includes('status')) {
+            // Wait 5 seconds before replying to avoid spam
+            await sleep(5000);
+            const replyText = config.AUTO_STATUS_MSG || 'Nice status! 💜';
+            await conn.sendMessage(user, { text: replyText });
+            console.log(`✅ Auto-replied to status from: ${user}`);
+          } else {
+            console.log('⚠️ Could not determine user for status reply');
+          }
+        } catch (err) {
+          console.error("❌ Auto-reply status error:", err);
+        }
+      }
+
+      // Don't process status messages further
+      return;
+    }
+
     // ============ NORMAL MESSAGE PROCESSING ============
     // Handle view once messages
     if (mek.message?.viewOnceMessageV2) {
       mek.message = mek.message.viewOnceMessageV2.message
     }
-    
+
     // Handle ephemeral messages
     if (getContentType(mek.message) === 'ephemeralMessage') {
       mek.message = mek.message.ephemeralMessage.message
     }
-    
+
     if (config.READ_MESSAGE === 'true') {
       await conn.readMessages([mek.key]);
-      console.log(`Marked message from from ${mek.key.remoteJid} as read ${mek.key.remoteJid} as read.`);
+      console.log(`Marked message from ${mek.key.remoteJid} as read.`);
     }
-        
+
     await Promise.all([
       saveMessage(mek),
     ]);
-    
+
     const m = sms(conn, mek)
     const type = getContentType(mek.message)
     const content = JSON.stringify(mek.message)
@@ -900,19 +844,19 @@ async function connectToWA() {
     const botNumber = conn.user.id.split(':')[0]
     const pushname = mek.pushName || 'Gon'
     const isMe = botNumber.includes(senderNumber)
-    
+
     // ============ FIXED OWNER DETECTION ============
     // Check if sender is owner (works everywhere - inbox, group, private)
     const isOwner = ownerJids.includes(sender) || isMe || ownerNumber.includes(senderNumber)
-    
+
     // Get bot's JID
     const botNumber2 = await jidNormalizedUser(conn.user.id);
-    
+
     // Get group metadata if in group
     const groupMetadata = isGroup ? await conn.groupMetadata(from).catch(e => null) : null
     const groupName = isGroup && groupMetadata ? groupMetadata.subject : ''
     const participants = isGroup && groupMetadata ? groupMetadata.participants : ''
-    
+
     // ============ FIXED ADMIN DETECTION ============
     // Get group admins properly
     let groupAdmins = []
@@ -921,16 +865,16 @@ async function connectToWA() {
         .filter(p => p.admin === 'admin' || p.admin === 'superadmin')
         .map(p => p.id)
     }
-    
+
     const isBotAdmins = isGroup ? groupAdmins.includes(botNumber2) : false
     const isAdmins = isGroup ? groupAdmins.includes(sender) : false
-    
+
     const isReact = m.message.reactionMessage ? true : false
-    
+
     const reply = (teks) => {
       conn.sendMessage(from, { text: teks }, { quoted: mek })
     }
-    
+
     const udp = botNumber.split('@')[0];
     const rav = ['255637351031', '255770100487'];
     let isCreator = [udp, ...rav, config.DEV]
@@ -944,22 +888,23 @@ async function connectToWA() {
       if (await handleAntiTag(conn, mek, from, sender, isOwner, isAdmins, groupMetadata)) return
       if (await handleAntiSpam(conn, mek, from, sender, isOwner, isAdmins)) return
     }
-    
+
     if (await handleAntiBug(conn, mek, from, sender)) return
 
-    // ============ CHATBOT HANDLER ============
-    // Run chatbot after security checks but before other processing
-    // This ensures chatbot doesn't interfere with commands
-    if (!isCmd) {
-      try {
-        await handleChatbotMessage(conn, from, mek, config)
-      } catch (err) {
-        console.error('Chatbot handler error:', err)
-      }
+    // ============ CHATBOT HANDLER (FOR NON-COMMAND MESSAGES) ============
+    // Run chatbot for non-command messages
+    if (!isCmd && body && body.length > 0 && body.length < 500 && !isGroup) {
+      // Chatbot in private chats
+      await handleChatbotMessage(conn, from, mek);
+    }
+    
+    if (!isCmd && body && body.length > 0 && body.length < 500 && isGroup) {
+      // Chatbot in groups (if enabled for this group)
+      await handleChatbotMessage(conn, from, mek);
     }
 
     // ============ OWNER COMMANDS (WORK EVERYWHERE) ============
-    if (isCreator && mek.text.startsWith('%')) {
+    if (isCreator && mek.text && mek.text.startsWith('%')) {
       let code = budy.slice(2);
       if (!code) {
         reply(`Provide me with a query to run Master!`);
@@ -975,8 +920,8 @@ async function connectToWA() {
       }
       return;
     }
-    
-    if (isCreator && mek.text.startsWith('$')) {
+
+    if (isCreator && mek.text && mek.text.startsWith('$')) {
       let code = budy.slice(2);
       if (!code) {
         reply(`Provide me with a query to run Master!`);
@@ -994,17 +939,17 @@ async function connectToWA() {
       }
       return;
     }
-    
+
     //================ownerreact==============
-    if (ownerNumber.includes(senderNumber) && !isReact) {
+    if (ownerNumber.includes(senderNumber) && !isReact && mek.text) {
       const reactions = ["💀", "👨‍💻"];
       const randomReaction = reactions[Math.floor(Math.random() * reactions.length)];
       m.react(randomReaction);
     }
 
     //==========public react============//
-    
-    if (!isReact && config.AUTO_REACT === 'true') {
+
+    if (!isReact && config.AUTO_REACT === 'true' && mek.text) {
       const reactions = [
         '🌼', '❤️', '💐', '🔥', '🏵️', '❄️', '🧊', '🐳', '💥', '🥀', '❤‍🔥', '🥹', '😩', '🫣', 
         '🤭', '👻', '👾', '🫶', '😻', '🙌', '🫂', '🫀', '👩‍🦰', '🧑‍🦰', '👩‍⚕️', '🧑‍⚕️', '🧕', 
@@ -1026,13 +971,13 @@ async function connectToWA() {
       const randomReaction = reactions[Math.floor(Math.random() * reactions.length)];
       m.react(randomReaction);
     }
-          
-    if (!isReact && config.CUSTOM_REACT === 'true') {
+
+    if (!isReact && config.CUSTOM_REACT === 'true' && mek.text) {
       const reactions = (config.CUSTOM_REACT_EMOJIS || '🙂,😔').split(',');
       const randomReaction = reactions[Math.floor(Math.random() * reactions.length)];
       m.react(randomReaction);
     }
-        
+
     //==========WORKTYPE============ 
     // FIXED: Owner can use commands everywhere regardless of MODE
     if (!isOwner) {
@@ -1040,16 +985,16 @@ async function connectToWA() {
       if (isGroup && config.MODE === "inbox") return
       if (!isGroup && config.MODE === "groups") return
     }
-   
+
     // take commands 
-                 
+
     const events = require('./command')
     const cmdName = isCmd ? body.slice(1).trim().split(" ")[0].toLowerCase() : false;
     if (isCmd) {
       const cmd = events.commands.find((cmd) => cmd.pattern === (cmdName)) || events.commands.find((cmd) => cmd.alias && cmd.alias.includes(cmdName))
       if (cmd) {
         if (cmd.react) conn.sendMessage(from, { react: { text: cmd.react, key: mek.key }})
-        
+
         try {
           cmd.function(conn, mek, m, {
             from, quoted, body, isCmd, command, args, q, text, 
@@ -1063,7 +1008,7 @@ async function connectToWA() {
         }
       }
     }
-    
+
     events.commands.map(async(command) => {
       if (body && command.on === "body") {
         command.function(conn, mek, m, {
@@ -1131,7 +1076,7 @@ async function connectToWA() {
               ...message.message.viewOnceMessage.message
           }
       }
-    
+
       let mtype = Object.keys(message.message)[0]
       let content = await generateForwardMessageContent(message, forceForward)
       let ctype = Object.keys(content)[0]
@@ -1180,7 +1125,7 @@ async function connectToWA() {
       }
       return buffer
     }
-    
+
     //================================================
     conn.sendFileUrl = async (jid, url, caption, quoted, options = {}) => {
       let mime = '';
@@ -1225,10 +1170,10 @@ async function connectToWA() {
       else if (copy.key.remoteJid.includes('@broadcast')) sender = sender || copy.key.remoteJid
       copy.key.remoteJid = jid
       copy.key.fromMe = sender === conn.user.id
-    
+
       return proto.WebMessageInfo.fromObject(copy)
     }
-    
+
     //=====================================================
     conn.getFile = async(PATH, save) => {
       let res
@@ -1247,7 +1192,7 @@ async function connectToWA() {
           data
       }
     }
-    
+
     //=====================================================
     conn.sendFile = async(jid, PATH, fileName, quoted = {}, options = {}) => {
       let types = await conn.getFile(PATH, true)
@@ -1310,7 +1255,7 @@ async function connectToWA() {
       }, { quoted, ...options })
       return fs.promises.unlink(pathFile)
     }
-    
+
     //=====================================================
     conn.sendVideoAsSticker = async (jid, buff, options = {}) => {
       let buffer;
@@ -1339,19 +1284,19 @@ async function connectToWA() {
         options
       );
     };
-    
+
     //=====================================================
     conn.sendTextWithMentions = async(jid, text, quoted, options = {}) => conn.sendMessage(jid, { text: text, contextInfo: { mentionedJid: [...text.matchAll(/@(\d{0,16})/g)].map(v => v[1] + '@s.whatsapp.net') }, ...options }, { quoted })
-    
+
     //=====================================================
     conn.sendImage = async(jid, path, caption = '', quoted = '', options) => {
       let buffer = Buffer.isBuffer(path) ? path : /^data:.*?\/.*?;base64,/i.test(path) ? Buffer.from(path.split `,` [1], 'base64') : /^https?:\/\//.test(path) ? await (await getBuffer(path)) : fs.existsSync(path) ? fs.readFileSync(path) : Buffer.alloc(0)
       return await conn.sendMessage(jid, { image: buffer, caption: caption, ...options }, { quoted })
     }
-    
+
     //=====================================================
     conn.sendText = (jid, text, quoted = '', options) => conn.sendMessage(jid, { text: text, ...options }, { quoted })
-    
+
     //=====================================================
     conn.sendButtonText = (jid, buttons = [], text, footer, quoted = '', options = {}) => {
       let buttonMessage = {
@@ -1378,7 +1323,7 @@ async function connectToWA() {
       }), options)
       conn.relayMessage(jid, template.message, { messageId: template.key.id })
     }
-    
+
     //=====================================================
     conn.getName = (jid, withoutContact = false) => {
             id = conn.decodeJid(jid);
@@ -1477,9 +1422,9 @@ async function connectToWA() {
         };
     conn.serializeM = mek => sms(conn, mek, store);
   }
-  
+
   app.get("/", (req, res) => {
-  res.send("𝐓𝐘𝐑𝐄𝐗 𝐌𝐃 STARTED ✅");
+  res.send("𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃 STARTED ✅");
   });
   app.listen(port, '0.0.0.0', () => console.log(`Server listening on port http://0.0.0.0:${port}`));
   setTimeout(() => {
