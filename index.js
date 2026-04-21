@@ -1,5 +1,5 @@
 console.clear()
-console.log("📳 Starting  𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃...")
+console.log("📳 Starting 𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃...")
 
 // ============ GLOBAL ANTI-CRASH ============
 process.on("uncaughtException", (err) => {
@@ -133,6 +133,24 @@ if (fs.existsSync(securityFile)) {
 // Save security settings
 function saveSecurity() {
   fs.writeFileSync(securityFile, JSON.stringify(securityDB, null, 2))
+}
+
+// ============ ANTI-MEDIA SETUP ============
+// Load anti-media handler
+let antiMediaHandler = null;
+let antiMediaDB = null;
+
+// Try to load anti-media plugin if it exists
+const antiMediaPluginPath = './plugins/antimedia.js';
+if (fs.existsSync(antiMediaPluginPath)) {
+  try {
+    const antiMediaPlugin = require(antiMediaPluginPath);
+    antiMediaHandler = antiMediaPlugin.handleAntiMedia;
+    antiMediaDB = antiMediaPlugin.antiMediaDB;
+    console.log('✅ Anti-Media plugin loaded successfully');
+  } catch (e) {
+    console.error('❌ Failed to load Anti-Media plugin:', e);
+  }
 }
 
 // ============ CHATBOT FUNCTIONS ============
@@ -351,8 +369,8 @@ let conn
 
 // ============ SECURITY FUNCTIONS ============
 
-// Anti-Media Function
-async function handleAntiMedia(conn, mek, from, sender, isOwner, isAdmins) {
+// Anti-Media Function (fallback if plugin not loaded)
+async function handleAntiMediaFallback(conn, mek, from, sender, isOwner, isAdmins) {
   if (!securityDB.antiMedia.enabled) return false
   if (isOwner || isAdmins) return false
 
@@ -749,13 +767,11 @@ let up = `
       // Auto React Status
       if (config.AUTO_STATUS_REACT === "true") {
         try {
-          // Small delay to ensure status is processed
           await sleep(2000);
           
           const emojis = ['❤️', '💸', '😇', '🍂', '💥', '💯', '🔥', '💫', '💎', '💗', '🤍', '🖤', '👀', '🙌', '🙆', '🚩', '🥰', '💐', '😎', '🤎', '✅', '🫀', '🧡', '😁', '😄', '🌸', '🕊️', '🌷', '⛅', '🌟', '🗿', '💜', '💙', '🌝', '💚'];
           const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
           
-          // Method 1: Send reaction to status broadcast
           try {
             await conn.sendMessage('status@broadcast', {
               react: {
@@ -766,7 +782,6 @@ let up = `
             console.log(`✅ Auto-reacted to status with: ${randomEmoji}`);
           } catch (reactErr) {
             console.log('Method 1 failed, trying alternative...');
-            // Method 2: React using the message key directly
             try {
               await conn.sendMessage(mek.key.remoteJid, {
                 react: {
@@ -789,7 +804,6 @@ let up = `
         try {
           const user = mek.key?.participant;
           if (user && user !== 'status@broadcast' && !user.includes('status')) {
-            // Wait 5 seconds before replying to avoid spam
             await sleep(5000);
             const replyText = config.AUTO_STATUS_MSG || 'Nice status! 💜';
             await conn.sendMessage(user, { text: replyText });
@@ -884,7 +898,15 @@ let up = `
 
     // ============ RUN SECURITY CHECKS ============
     if (isGroup) {
-      if (await handleAntiMedia(conn, mek, from, sender, isOwner, isAdmins)) return
+      // Use anti-media handler (plugin or fallback)
+      let antiMediaResult = false;
+      if (antiMediaHandler) {
+        antiMediaResult = await antiMediaHandler(conn, mek, from, sender, isOwner, isAdmins);
+      } else {
+        antiMediaResult = await handleAntiMediaFallback(conn, mek, from, sender, isOwner, isAdmins);
+      }
+      if (antiMediaResult) return;
+      
       if (await handleAntiTag(conn, mek, from, sender, isOwner, isAdmins, groupMetadata)) return
       if (await handleAntiSpam(conn, mek, from, sender, isOwner, isAdmins)) return
     }
