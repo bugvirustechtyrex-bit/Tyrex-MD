@@ -70,6 +70,17 @@ function resetWarnings(groupId, userId) {
     }
 }
 
+// Reset all warnings in group
+function resetAllWarnings(groupId) {
+    const warnings = loadWarnings();
+    if (warnings[groupId]) {
+        delete warnings[groupId];
+        saveWarnings(warnings);
+        return true;
+    }
+    return false;
+}
+
 // Get warning count
 function getWarningCount(groupId, userId) {
     const warnings = loadWarnings();
@@ -79,19 +90,25 @@ function getWarningCount(groupId, userId) {
     return 0;
 }
 
+// Get all warnings in group
+function getGroupWarnings(groupId) {
+    const warnings = loadWarnings();
+    if (warnings[groupId]) {
+        return warnings[groupId];
+    }
+    return {};
+}
+
 // Check if message mentions bot
 function mentionsBot(message, botJid) {
     if (!message) return false;
     
-    // Check mentioned JIDs
     const mentionedJid = message.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
     if (mentionedJid.includes(botJid)) return true;
     
-    // Check if replying to bot
     const quotedParticipant = message.message?.extendedTextMessage?.contextInfo?.participant;
     if (quotedParticipant === botJid) return true;
     
-    // Check if message contains @bot number
     const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
     const botNumber = botJid.split('@')[0];
     if (text.includes(`@${botNumber}`)) return true;
@@ -112,112 +129,6 @@ const getContextInfo = (sender) => {
         },
     };
 };
-
-// ==============================================
-// ANTI-MENTION MESSAGE HANDLER
-// ==============================================
-async function handleAntiMention(sock, chatId, message, senderId, isAdmin, isBotAdmin) {
-    const configData = loadConfig();
-    if (!configData.enabled) return;
-    if (isAdmin) return;
-    
-    const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-    
-    if (mentionsBot(message, botJid)) {
-        const action = configData.action;
-        const warnLimit = configData.warnLimit;
-        
-        // Delete the message
-        try {
-            await sock.sendMessage(chatId, { delete: message.key });
-        } catch (err) {
-            console.error('Failed to delete message:', err);
-        }
-        
-        if (action === 'kick') {
-            // Kick immediately
-            try {
-                await sock.groupParticipantsUpdate(chatId, [senderId], 'remove');
-                await sock.sendMessage(chatId, {
-                    text: `┏▣ ◈ *${config.BOT_NAME}* ◈
-┣▣ 🦶 ANTI-MENTION
-┣▣
-┣▣ 👤 @${senderId.split('@')[0]}
-┣▣ 📋 User has been removed for mentioning the bot!
-┣▣
-┣▣ ${config.DESCRIPTION}
-┗▣`,
-                    mentions: [senderId],
-                    contextInfo: getContextInfo(senderId)
-                });
-            } catch (err) {
-                console.error('Failed to kick user:', err);
-            }
-        } 
-        else if (action === 'warn') {
-            const warningCount = addWarning(chatId, senderId);
-            
-            if (warningCount >= warnLimit) {
-                // Kick after reaching limit
-                try {
-                    await sock.groupParticipantsUpdate(chatId, [senderId], 'remove');
-                    resetWarnings(chatId, senderId);
-                    await sock.sendMessage(chatId, {
-                        text: `┏▣ ◈ *${config.BOT_NAME}* ◈
-┣▣ 👢 ANTI-MENTION
-┣▣
-┣▣ 👤 @${senderId.split('@')[0]}
-┣▣ 📊 Warnings: ${warningCount}/${warnLimit}
-┣▣ 🔨 Action: REMOVED
-┣▣
-┣▣ ⚠️ User has been removed after ${warnLimit} warnings!
-┣▣
-┣▣ ${config.DESCRIPTION}
-┗▣`,
-                        mentions: [senderId],
-                        contextInfo: getContextInfo(senderId)
-                    });
-                } catch (err) {
-                    console.error('Failed to kick user:', err);
-                }
-            } else {
-                // Send warning
-                await sock.sendMessage(chatId, {
-                    text: `┏▣ ◈ *${config.BOT_NAME}* ◈
-┣▣ ⚠️ ANTI-MENTION WARNING
-┣▣
-┣▣ 👤 @${senderId.split('@')[0]}
-┣▣ 📊 Warning: ${warningCount}/${warnLimit}
-┣▣
-┣▣ 🚫 Please do not mention the bot!
-┣▣ 💀 ${warnLimit - warningCount} warning(s) left before removal.
-┣▣
-┣▣ ${config.DESCRIPTION}
-┗▣`,
-                    mentions: [senderId],
-                    contextInfo: getContextInfo(senderId)
-                });
-            }
-        }
-        else {
-            // Just delete message, no action
-            await sock.sendMessage(chatId, {
-                text: `┏▣ ◈ *${config.BOT_NAME}* ◈
-┣▣ 🚫 ANTI-MENTION
-┣▣
-┣▣ 👤 @${senderId.split('@')[0]}
-┣▣ 📋 Mention detected! Message has been deleted.
-┣▣
-┣▣ ⚠️ Please do not mention the bot.
-┣▣
-┣▣ ${config.DESCRIPTION}
-┗▣`,
-                mentions: [senderId],
-                contextInfo: getContextInfo(senderId)
-            });
-        }
-    }
-}
 
 // ==============================================
 // ANTI-MENTION COMMAND
@@ -336,11 +247,7 @@ async (conn, mek, m, { from, isGroup, isAdmins, isCreator, sender, args, reply }
         }
         // Handle reset
         else if (action === 'reset') {
-            const warnings = loadWarnings();
-            if (warnings[from]) {
-                delete warnings[from];
-                saveWarnings(warnings);
-            }
+            resetAllWarnings(from);
             return await conn.sendMessage(from, {
                 text: `┏▣ ◈ *${botName}* ◈
 ┣▣ 🔄 WARNINGS RESET
@@ -385,6 +292,7 @@ async (conn, mek, m, { from, isGroup, isAdmins, isCreator, sender, args, reply }
         await conn.sendMessage(from, {
             text: `┏▣ ◈ *${config.BOT_NAME}* ◈
 ┣▣ ❌ ERROR
+┣▣
 ┣▣ 📋 ${e.message}
 ┣▣
 ┣▣ ${config.DESCRIPTION}
@@ -461,6 +369,7 @@ async (conn, mek, m, { from, isGroup, isAdmins, isCreator, sender, mentionedJid,
         await conn.sendMessage(from, {
             text: `┏▣ ◈ *${config.BOT_NAME}* ◈
 ┣▣ ❌ ERROR
+┣▣
 ┣▣ 📋 ${e.message}
 ┣▣
 ┣▣ ${config.DESCRIPTION}
@@ -543,6 +452,7 @@ async (conn, mek, m, { from, isGroup, isAdmins, isCreator, sender, mentionedJid,
         await conn.sendMessage(from, {
             text: `┏▣ ◈ *${config.BOT_NAME}* ◈
 ┣▣ ❌ ERROR
+┣▣
 ┣▣ 📋 ${e.message}
 ┣▣
 ┣▣ ${config.DESCRIPTION}
@@ -552,5 +462,103 @@ async (conn, mek, m, { from, isGroup, isAdmins, isCreator, sender, mentionedJid,
     }
 });
 
+// ==============================================
+// ANTI-MENTION MESSAGE HANDLER
+// ==============================================
+async function handleAntiMention(sock, chatId, message, senderId, isAdmin, isBotAdmin) {
+    const configData = loadConfig();
+    if (!configData.enabled) return;
+    if (isAdmin) return;
+    
+    const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+    
+    if (mentionsBot(message, botJid)) {
+        const action = configData.action;
+        const warnLimit = configData.warnLimit;
+        
+        // Delete the message
+        try {
+            await sock.sendMessage(chatId, { delete: message.key });
+        } catch (err) {
+            console.error('Failed to delete message:', err);
+        }
+        
+        if (action === 'kick') {
+            try {
+                await sock.groupParticipantsUpdate(chatId, [senderId], 'remove');
+                await sock.sendMessage(chatId, {
+                    text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ 🦶 ANTI-MENTION
+┣▣
+┣▣ 👤 @${senderId.split('@')[0]}
+┣▣ 📋 User has been removed for mentioning the bot!
+┣▣
+┣▣ ${config.DESCRIPTION}
+┗▣`,
+                    mentions: [senderId],
+                    contextInfo: getContextInfo(senderId)
+                });
+            } catch (err) {
+                console.error('Failed to kick user:', err);
+            }
+        } 
+        else if (action === 'warn') {
+            const warningCount = addWarning(chatId, senderId);
+            
+            if (warningCount >= warnLimit) {
+                try {
+                    await sock.groupParticipantsUpdate(chatId, [senderId], 'remove');
+                    resetWarnings(chatId, senderId);
+                    await sock.sendMessage(chatId, {
+                        text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ 👢 ANTI-MENTION
+┣▣
+┣▣ 👤 @${senderId.split('@')[0]}
+┣▣ 📊 Warnings: ${warningCount}/${warnLimit}
+┣▣ 🔨 Action: REMOVED
+┣▣
+┣▣ ⚠️ User has been removed after ${warnLimit} warnings!
+┣▣
+┣▣ ${config.DESCRIPTION}
+┗▣`,
+                        mentions: [senderId],
+                        contextInfo: getContextInfo(senderId)
+                    });
+                } catch (err) {
+                    console.error('Failed to kick user:', err);
+                }
+            } else {
+                await sock.sendMessage(chatId, {
+                    text: `┏▣ ◈ *${config.BOT_NAME}* ◈
+┣▣ ⚠️ ANTI-MENTION WARNING
+┣▣
+┣▣ 👤 @${senderId.split('@')[0]}
+┣▣ 📊 Warning: ${warningCount}/${warnLimit}
+┣▣
+┣▣ 🚫 Please do not mention the bot!
+┣▣ 💀 ${warnLimit - warningCount} warning(s) left before removal.
+┣▣
+┣▣ ${config.DESCRIPTION}
+┗▣`,
+                    mentions: [senderId],
+                    contextInfo: getContextInfo(senderId)
+                });
+            }
+        }
+    }
+}
+
 // Export handler for use in index.js
-module.exports = { handleAntiMention };
+module.exports = { 
+    handleAntiMention,
+    loadConfig,
+    saveConfig,
+    loadWarnings,
+    saveWarnings,
+    addWarning,
+    resetWarnings,
+    resetAllWarnings,
+    getWarningCount,
+    getGroupWarnings,
+    mentionsBot
+};
