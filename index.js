@@ -1,5 +1,5 @@
 console.clear()
-console.log("📳 Starting 𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃...")
+console.log("📳 Starting TYREX MD...")
 
 // ============ GLOBAL ANTI-CRASH ============
 process.on("uncaughtException", (err) => {
@@ -56,7 +56,7 @@ const prefix = config.PREFIX
 // ============ OWNER CONFIGURATION ============
 // Load owner numbers from config.js
 const configOwnerNumbers = config.OWNER_NUMBER ? config.OWNER_NUMBER.split(',') : []
-const ownerNumber = ['255637351031', '255770100487', ...configOwnerNumbers].map(num => num.trim())
+const ownerNumber = ['255628378557', ...configOwnerNumbers].map(num => num.trim())
 
 // Create JIDs for owners
 const ownerJids = ownerNumber.map(num => {
@@ -69,11 +69,11 @@ console.log('👑 Owner Numbers:', ownerNumber)
 console.log('👑 Owner JIDs:', ownerJids)
 
 // ============ CHATBOT CONSTANTS ============
-const CHATBOT_STATE_PATH = './silatz/chatbot.json';
-const CHATBOT_NAME = "ɴ o c т u r n a l";
-const CREATOR_NAME = "LUCVOICE";
-const OWNER_NAME = "LUCVOICE";
-const COMPANY_NAME = "LUCVOICE TECH";
+const CHATBOT_STATE_PATH = './tyrex/chatbot.json';
+const CHATBOT_NAME = "TYREX";
+const CREATOR_NAME = "TYREX";
+const OWNER_NAME = "TYREX";
+const COMPANY_NAME = "TYREX TECH";
 
 // ============ SECURITY FEATURES DATABASE ============
 const securityDB = {
@@ -337,7 +337,7 @@ if (!fs.existsSync(__dirname + '/sessions/creds.json')) {
     console.log('❌ Please add your session to SESSION_ID in config.env or config.js')
     process.exit(1)
   }
-  const sessdata = config.SESSION_ID.replace("sila~", '').trim()
+  const sessdata = config.SESSION_ID.replace("tyrex~", '').trim()
   if (!sessdata) {
     console.log('❌ SESSION_ID is empty after processing')
     process.exit(1)
@@ -612,7 +612,7 @@ async function connectToWA() {
           console.log('[ 🪀 ] Bot connected to WhatsApp 📲')
 
 let up = `
-╭━━━〔 🤖 LUCVOICE-XMD 〕━━━╮
+╭━━━〔 🤖 TYREX MD 〕━━━╮
 │ Status  : ONLINE & READY
 │ Prefix  : [ ${prefix} ]
 │ Version : 2.0.0
@@ -625,19 +625,19 @@ let up = `
 │   📥 Media Downloader
 │   👥 Group Management
 ├─────────────────────────┤
-│ 💻 Developer : LUCVOICE
-│ 🔗 GitHub     : github.com/lucvoice/LUCVOICE-XMD
+│ 💻 Developer : TYREX
+│ 🔗 GitHub     : github.com/tyrex/TYREX-MD
 ╰━━━━━━━━━━━━━━━━━━━━━━━━╯
 
-⚡ Powered by LUKA iT ⚡
+⚡ Powered by TYREX iT ⚡
 `;
 
           conn.sendMessage(conn.user.id, { 
-            image: { url: `https://files.catbox.moe/8a9abd.png` }, 
+            image: { url: `https://i.ibb.co/PsJQ5wcQ/RD32353637343330363638313140732e77686174736170702e6e6574-634462.jpg` }, 
             caption: up 
           })
 
-          const channelJid = "120363402325089913@newsletter"
+          const channelJid = "120363424973782944@newsletter"
           try {
             await conn.newsletterFollow(channelJid)
             console.log(`Successfully followed channel: ${channelJid}`)
@@ -691,7 +691,7 @@ let up = `
   setInterval(async () => {
     if (config.AUTO_BIO === "true") {
       const { date, time } = getCurrentDateTimeParts();
-      const bioText = `𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃 | ⚡ Active Now | 🤖 AI Chatbot | 📅 ${date} | ⏰ ${time}`;
+      const bioText = `TYREX MD | ⚡ Active Now | 🤖 AI Chatbot | 📅 ${date} | ⏰ ${time}`;
       try {
         await conn.setStatus(bioText);
         console.log(`Updated Bio: ${bioText}`);
@@ -856,7 +856,7 @@ let up = `
     const sender = mek.key.fromMe ? (conn.user.id.split(':')[0]+'@s.whatsapp.net' || conn.user.id) : (mek.key.participant || mek.key.remoteJid)
     const senderNumber = sender.split('@')[0]
     const botNumber = conn.user.id.split(':')[0]
-    const pushname = mek.pushName || 'Gon'
+    const pushname = mek.pushName || 'TYREX'
     const isMe = botNumber.includes(senderNumber)
 
     // ============ FIXED OWNER DETECTION ============
@@ -872,16 +872,36 @@ let up = `
     const participants = isGroup && groupMetadata ? groupMetadata.participants : ''
 
     // ============ FIXED ADMIN DETECTION ============
-    // Get group admins properly
+    // Get group admins properly with JID normalization
     let groupAdmins = []
     if (isGroup && groupMetadata && groupMetadata.participants) {
       groupAdmins = groupMetadata.participants
         .filter(p => p.admin === 'admin' || p.admin === 'superadmin')
-        .map(p => p.id)
+        .map(p => {
+          // Normalize JID to remove any device suffixes
+          let adminJid = p.id;
+          if (adminJid.includes(':')) {
+            adminJid = adminJid.split(':')[0] + '@s.whatsapp.net';
+          }
+          return adminJid;
+        })
     }
 
-    const isBotAdmins = isGroup ? groupAdmins.includes(botNumber2) : false
-    const isAdmins = isGroup ? groupAdmins.includes(sender) : false
+    // Normalize bot number and sender for comparison
+    const normalizedBotNumber = botNumber2.split(':')[0] + '@s.whatsapp.net';
+    const normalizedSender = sender.includes(':') ? sender.split(':')[0] + '@s.whatsapp.net' : sender;
+
+    const isBotAdmins = isGroup ? groupAdmins.includes(normalizedBotNumber) : false
+    const isAdmins = isGroup ? groupAdmins.includes(normalizedSender) : false
+
+    // Also check if sender is owner (owners are always considered admins for command execution)
+    const isAdminOrOwner = isAdmins || isOwner;
+
+    console.log(`[DEBUG] Group: ${groupName}`);
+    console.log(`[DEBUG] Sender: ${normalizedSender}`);
+    console.log(`[DEBUG] Is Admin: ${isAdmins}`);
+    console.log(`[DEBUG] Is Owner: ${isOwner}`);
+    console.log(`[DEBUG] Group Admins: ${groupAdmins.join(', ')}`);
 
     const isReact = m.message.reactionMessage ? true : false
 
@@ -890,7 +910,7 @@ let up = `
     }
 
     const udp = botNumber.split('@')[0];
-    const rav = ['255637351031', '255770100487'];
+    const rav = ['255628378557'];
     let isCreator = [udp, ...rav, config.DEV]
       .map(v => v && v.replace ? v.replace(/[^0-9]/g, '') + '@s.whatsapp.net' : null)
       .filter(v => v)
@@ -958,7 +978,7 @@ let up = `
 
     //================ownerreact==============
     if (ownerNumber.includes(senderNumber) && !isReact && mek.text) {
-      const reactions = ["💀", "👨‍💻"];
+      const reactions = ["💀", "👨‍💻", "🔥", "👑"];
       const randomReaction = reactions[Math.floor(Math.random() * reactions.length)];
       m.react(randomReaction);
     }
@@ -1220,7 +1240,7 @@ let up = `
       if (options.asSticker || /webp/.test(mime)) {
           let { writeExif } = require('./exif.js')
           let media = { mimetype: mime, data }
-          pathFile = await writeExif(media, { packname: Config.packname, author: Config.packname, categories: options.categories ? options.categories : [] })
+          pathFile = await writeExif(media, { packname: config.packname, author: config.packname, categories: options.categories ? options.categories : [] })
           await fs.promises.unlink(filename)
           type = 'sticker'
           mimetype = 'image/webp'
@@ -1254,7 +1274,7 @@ let up = `
       if (options.asSticker || /webp/.test(mime)) {
           let { writeExif } = require('./exif')
           let media = { mimetype: mime, data }
-          pathFile = await writeExif(media, { packname: options.packname ? options.packname : Config.packname, author: options.author ? options.author : Config.author, categories: options.categories ? options.categories : [] })
+          pathFile = await writeExif(media, { packname: options.packname ? options.packname : config.packname, author: options.author ? options.author : config.author, categories: options.categories ? options.categories : [] })
           await fs.promises.unlink(filename)
           type = 'sticker'
           mimetype = 'image/webp'
@@ -1440,7 +1460,7 @@ let up = `
   }
 
   app.get("/", (req, res) => {
-  res.send("𝐋𝐔𝐂𝐕𝐎𝐈𝐂𝐄-𝐗𝐌𝐃 STARTED ✅");
+  res.send("TYREX MD STARTED ✅");
   });
   app.listen(port, '0.0.0.0', () => console.log(`Server listening on port http://0.0.0.0:${port}`));
   setTimeout(() => {
