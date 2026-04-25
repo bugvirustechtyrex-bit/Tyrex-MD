@@ -1,135 +1,160 @@
-const { cmd } = require("../command");
-const config = require("../config");
-const isAdmin = require("../lib/isAdmin");
+const config = require('../config');
+const { cmd } = require('../command');
+const { handleAntilink } = require('../lib/antilink');
 
-// Warning tracker
-const warningCount = {};
+// BOT NAME
+const botName = "꧁༒☬ 𝐓𝐘𝐑𝐄𝐗_MD ☬༒꧂";
 
-//==============================================================================
-// 🛡️ LINK DETECTOR & PROTECTOR - SILENT MODE
-//==============================================================================
-cmd({ on: "body" }, async (client, message, chat, { from, sender, isGroup, isAdmins, isOwner, body }) => {
-    try {
-        if (!isGroup) return;
-        if (!config.ANTI_LINK) return;
-        
-        // Check if bot is admin in the group
-        let botIsAdmin = false;
-        try {
-            const botNumber = client.user.id.split(':')[0] + '@s.whatsapp.net';
-            const { isAdmin: isBotAdmin } = await isAdmin(client, from, botNumber);
-            botIsAdmin = isBotAdmin;
-        } catch (err) {
-            console.log('Error checking bot admin status:', err);
-        }
-        
-        // If bot is not admin, do nothing (can't delete messages or kick)
-        if (!botIsAdmin) return;
-        
-        // Check if sender is admin or owner
-        if (isAdmins || isOwner) return;
-        
-        const linkRegex = /((https?:\/\/|www\.)[^\s]+|([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,6}(\/[^\s]*)?)/gi;
-        
-        if (linkRegex.test(body)) {
-            const mode = config.ANTILINK_MODE || 'delete';
-            
-            // Delete link silently first
-            await client.sendMessage(from, { delete: message.key });
-            
-            // Extract clean username without special characters
-            let cleanSender = sender.split('@')[0];
-            
-            if (mode === 'warn') {
-                warningCount[sender] = (warningCount[sender] || 0) + 1;
-                if (warningCount[sender] >= 3) {
-                    // Send short kick message with mention
-                    await client.sendMessage(from, {
-                        text: `⚠️ @${cleanSender} has been kicked for sending links (3/3 warnings)`,
-                        mentions: [sender]
-                    });
-                    await client.groupParticipantsUpdate(from, [sender], 'remove');
-                    delete warningCount[sender];
-                } else {
-                    // Send short warning message with mention only
-                    await client.sendMessage(from, {
-                        text: `⚠️ @${cleanSender} Warning ${warningCount[sender]}/3 - Links are not allowed`,
-                        mentions: [sender]
-                    });
-                }
-            } else if (mode === 'kick') {
-                // Send short kick message with mention
-                await client.sendMessage(from, {
-                    text: `⚠️ @${cleanSender} has been kicked for sending a link`,
-                    mentions: [sender]
-                });
-                await client.groupParticipantsUpdate(from, [sender], 'remove');
-            } else {
-                // Delete mode - send short warning message with mention only
-                await client.sendMessage(from, {
-                    text: `⚠️ @${cleanSender} links are not allowed here`,
-                    mentions: [sender]
-                });
-            }
-        }
-    } catch (error) {
-        console.error("Anti-link error:", error);
-    }
-});
-
-//==============================================================================
-// ⚙️ LINK SHIELD CONTROL PANEL
-//==============================================================================
 cmd({
     pattern: "antilink",
-    alias: ["linkshield", "shield"],
-    desc: "Configure link protection system",
-    category: "group",
+    alias: ["antilink", "al", "linkguard"],
     react: "🛡️",
-    filename: __filename,
-},
-async (client, message, m, { isGroup, isAdmins, isOwner, from, sender, args, reply }) => {
-    try {
-        if (!isGroup) {
-            return reply(`❌ This command works only in groups!`);
-        }
-
-        if (!isAdmins && !isOwner) {
-            return reply(`❌ Admin only command!`);
-        }
-
-        const action = args[0]?.toLowerCase() || 'status';
-        let statusText = "";
-        let additionalInfo = "";
-
-        switch (action) {
-            case 'on':
-                config.ANTI_LINK = true;
-                statusText = "✅ LINK SHIELD ACTIVATED";
-                additionalInfo = "All links will be monitored and blocked silently";
-                break;
-            case 'off':
-                config.ANTI_LINK = false;
-                statusText = "❌ LINK SHIELD DEACTIVATED";
-                additionalInfo = "Links are now allowed in this group";
-                break;
-            case 'warn':
-            case 'kick':
-            case 'delete':
-                config.ANTI_LINK = true;
-                config.ANTILINK_MODE = action;
-                statusText = `⚙️ Mode: ${action.toUpperCase()}`;
-                additionalInfo = `Bot will ${action} users who send links`;
-                break;
-            default:
-                statusText = `🛡️ LINK SHIELD: ${config.ANTI_LINK ? "ACTIVE ✅" : "INACTIVE ❌"}`;
-                additionalInfo = `Mode: ${config.ANTILINK_MODE || 'delete'}\n\n📌 Commands:\n.antilink on/off\n.antilink warn/kick/delete`;
-                break;
-        }
-
-        await reply(`🛡️ *LINK SHIELD*\n${statusText}\n📋 ${additionalInfo}`);
-
-    } catch (error) {
-        reply(`❌ Error: ${error.message}`);
+    desc: "Zuia viungo kwenye group",
+    category: "group",
+    filename: __filename
+}, async (conn, mek, m, { from, reply, isGroup, args, sender, isAdmins, isCreator }) => {
+    
+    // Check if in group
+    if (!isGroup) {
+        return await conn.sendMessage(from, {
+            text: `┏▣ ◈ *${botName}* ◈
+┣▣ ❌ ERROR
+┣▣ 📋 Command hii inatumika kwenye group pekee!
+┣▣
+┗▣`,
+            contextInfo: { mentionedJid: [sender] }
+        }, { quoted: mek });
     }
+
+    // Check if user is admin (only admins can change antilink settings)
+    if (!isAdmins && !isCreator) {
+        return await conn.sendMessage(from, {
+            text: `┏▣ ◈ *${botName}* ◈
+┣▣ ❌ UNAUTHORIZED
+┣▣ 📋 Watu walioteuliwa (admins) tu ndio wanaweza kudhibiti antilink!
+┣▣
+┗▣`,
+            contextInfo: { mentionedJid: [sender] }
+        }, { quoted: mek });
+    }
+
+    const type = args[0] ? args[0].toLowerCase() : '';
+    const action = args[1] ? args[1].toLowerCase() : '';
+
+    // ========== ANTILINK ON ==========
+    if (type === "on") {
+        config.ANTILINK = "true";
+        await conn.sendMessage(from, { react: { text: "✅", key: mek.key } });
+        return await conn.sendMessage(from, {
+            text: `┏▣ ◈ *${botName}* ◈
+┣▣ 🛡️ ANTILINK IMEWASHWA
+┣▣
+┣▣ ✅ Sasa viungo vitazuiliwa kwenye group!
+┣▣
+┣▣ 📋 Watumiaji wanaotuma viungo:
+┣▣ ⚠️ Watachukuliwa hatua kulingana na action
+┣▣
+┗▣`,
+            contextInfo: { mentionedJid: [sender] }
+        }, { quoted: mek });
+    }
+
+    // ========== ANTILINK OFF ==========
+    if (type === "off") {
+        config.ANTILINK = "false";
+        await conn.sendMessage(from, { react: { text: "🔓", key: mek.key } });
+        return await conn.sendMessage(from, {
+            text: `┏▣ ◈ *${botName}* ◈
+┣▣ 🔓 ANTILINK IMEZIMWA
+┣▣
+┣▣ ❌ Viungo vinaruhusiwa sasa kwenye group!
+┣▣
+┗▣`,
+            contextInfo: { mentionedJid: [sender] }
+        }, { quoted: mek });
+    }
+
+    // ========== SET ACTION ==========
+    if (type === "action") {
+        if (['delete', 'warn', 'kick'].includes(action)) {
+            config.ANTILINK_ACTION = action;
+            
+            let actionEmoji = "";
+            let actionDesc = "";
+            if (action === "delete") {
+                actionEmoji = "🗑️";
+                actionDesc = "Ujumbe wenye viungo utafutwa tu";
+            } else if (action === "warn") {
+                actionEmoji = "⚠️";
+                actionDesc = "Mtumiaji ataonywa kwanza";
+            } else if (action === "kick") {
+                actionEmoji = "👢";
+                actionDesc = "Mtumiaji atatolewa kwenye group";
+            }
+            
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${botName}* ◈
+┣▣ ${actionEmoji} ACTION IMEWEKWA
+┣▣
+┣▣ 📌 Hatua: *${action.toUpperCase()}*
+┣▣ 📋 ${actionDesc}
+┣▣
+┗▣`,
+                contextInfo: { mentionedJid: [sender] }
+            }, { quoted: mek });
+        } else {
+            return await conn.sendMessage(from, {
+                text: `┏▣ ◈ *${botName}* ◈
+┣▣ ⚠️ MATUMIZI
+┣▣
+┣▣ 📌 *.antilink action delete*
+┣▣ 📌 *.antilink action warn*
+┣▣ 📌 *.antilink action kick*
+┣▣
+┣▣ 📋 delete - Futa ujumbe tu
+┣▣ 📋 warn - Onya mtumiaji
+┣▣ 📋 kick - Toa mtumiaji kwenye group
+┣▣
+┗▣`,
+                contextInfo: { mentionedJid: [sender] }
+            }, { quoted: mek });
+        }
+    }
+    
+    // ========== HELP MENU ==========
+    return await conn.sendMessage(from, {
+        text: `┏▣ ◈ *${botName}* ◈
+┣▣ 🛡️ *ANTILINK COMMANDS*
+┣▣
+┣▣ 📌 *.antilink on*
+┣▣    ✅ Washa ulinzi wa viungo
+┣▣
+┣▣ 📌 *.antilink off*
+┣▣    ❌ Zima ulinzi wa viungo
+┣▣
+┣▣ 📌 *.antilink action delete*
+┣▣    🗑️ Futa viungo tu
+┣▣
+┣▣ 📌 *.antilink action warn*
+┣▣    ⚠️ Onya mtumiaji
+┣▣
+┣▣ 📌 *.antilink action kick*
+┣▣    👢 Toa mtumiaji kwenye group
+┣▣
+┣▣ 💡 *Current Status:*
+┣▣ 🛡️ Antilink: ${config.ANTILINK === "true" ? "✅ ON" : "❌ OFF"}
+┣▣ ⚙️ Action: ${config.ANTILINK_ACTION || "delete"}
+┣▣
+┗▣`,
+        contextInfo: { mentionedJid: [sender] }
+    }, { quoted: mek });
+});
+
+// ========== AUTO DETECTOR (Body) ==========
+cmd({ on: "body" }, async (conn, mek, m, { isGroup, isAdmins, isOwner, isCreator }) => {
+    // Check if antilink is enabled
+    if (config.ANTILINK !== "true") return;
+    
+    // Process the message for links
+    await handleAntilink(conn, m, { isAdmins, isOwner });
 });
