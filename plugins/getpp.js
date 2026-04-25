@@ -31,30 +31,20 @@ cmd({
             ppUrl = 'https://i.ibb.co/PsJQ5wcQ/RD32353637343330363638313140732e77686174736170702e6e6574-634462.jpg';
         }
 
-        const userNumber = target.split('@')[0];
-
-        // Simple message with channel
+        // Simple caption with ONLY channel link
         const caption = `
-┏━━━━━━━━━━━━━━━┓
-┃    📸 NICE PHOTO 💕
-┃
-┃    👤 @${userNumber}
-┃
-┃    💞🌹💯
-┃
-┃    ✨ TYREX MD ✨
-┃    📢 @newsletter 
-┃    JID: 120363424973782944
-┗━━━━━━━━━━━━━━━┛
+📸 NICE PHOTO 💕💞🌹💯
+
+🔗 JOIN MY CHANNEL:
+https://whatsapp.com/channel/0029VbBG4gfISTkCpKxyMH02
 `.trim();
 
         await conn.sendMessage(from, {
             image: { url: ppUrl },
-            caption: caption,
-            mentions: [target]
+            caption: caption
         }, { quoted: mek });
 
-        await conn.sendMessage(from, { react: { text: "💞", key: mek.key } });
+        await conn.sendMessage(from, { react: { text: "💯", key: mek.key } });
 
     } catch (err) {
         console.error("ERROR:", err);
