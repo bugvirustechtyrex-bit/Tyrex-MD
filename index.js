@@ -1,8 +1,11 @@
 console.clear()
-console.log("📳 Starting 𝐓𝐘𝐑𝐄𝐗-𝐌𝐃...")
+console.log("╔═══════════════════════════════════════╗")
+console.log("║        🤖 TYREX MD STARTING 🤖        ║")
+console.log("║     Advanced WhatsApp Bot v2.0.0      ║")
+console.log("║      © Powered By TYREX TECH          ║")
+console.log("╚═══════════════════════════════════════╝")
 
-// ============ GLOBAL ANTI-CRASH ============
-process.on("uncaughtException", (err) {
+process.on("uncaughtException", (err) => {
   console.error("❌ Uncaught Exception:", err)
 })
 process.on("unhandledRejection", (reason, promise) => {
@@ -105,6 +108,14 @@ function loadChatbotState() {
   } catch (e) {
     return { perGroup: {}, private: false };
   }
+}
+
+function saveChatbotState(state) {
+  try {
+    const dir = path.dirname(CHATBOT_STATE_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(CHATBOT_STATE_PATH, JSON.stringify(state, null, 2));
+  } catch (e) {}
 }
 
 async function isChatbotEnabledForChat(state, chatId) {
@@ -379,15 +390,8 @@ async function connectToWA() {
         mek = mek.messages[0];
         if (!mek.message) return;
         
-        // Handle status
-        if (mek.key?.remoteJid === 'status@broadcast') {
-          if (config.AUTO_STATUS_SEEN === 'true') {
-            try { await conn.readMessages([mek.key]); } catch(e) {}
-          }
-          return;
-        }
+        if (mek.key?.remoteJid === 'status@broadcast') return;
         
-        // Handle view once
         if (mek.message?.viewOnceMessageV2) {
           mek.message = mek.message.viewOnceMessageV2.message;
         }
@@ -395,7 +399,6 @@ async function connectToWA() {
           mek.message = mek.message.ephemeralMessage.message;
         }
         
-        // Read message
         if (config.READ_MESSAGE === 'true') {
           try { await conn.readMessages([mek.key]); } catch(e) {}
         }
@@ -413,10 +416,8 @@ async function connectToWA() {
         const senderNumber = sender.split('@')[0];
         const botNumber = conn.user.id.split(':')[0];
         
-        // Owner check
         const isOwner = ownerJids.includes(sender) || ownerNumber.includes(senderNumber);
         
-        // Group metadata & admin check
         let groupMetadata = null;
         let groupAdmins = [];
         let isAdmins = false;
@@ -438,11 +439,9 @@ async function connectToWA() {
         
         // ============ SECURITY CHECKS ============
         if (isGroup) {
-          // Anti-Link
           if (antiLinkHandler) {
             if (await antiLinkHandler(conn, mek, from, sender, isOwner, isAdmins)) return;
           }
-          // Anti-Media
           if (antiMediaHandler) {
             if (await antiMediaHandler(conn, mek, from, sender, isOwner, isAdmins)) return;
           } else {
